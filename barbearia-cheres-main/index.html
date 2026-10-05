@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Cheres • Rio de Janeiro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- 🔥 Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        .logo-font { font-family: 'Bebas Neue', sans-serif; letter-spacing: -2px; }
+        
+        .hero-bg {
+            background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85));
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-slides {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1.5s ease-in-out;
+        }
+        
+        .hero-slides::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(45, 45, 45, 0.65);
+            z-index: 1;
+        }
+        
+        .slot-btn { transition: all 0.3s ease; }
+        .slot-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+
+        .booked {
+            background-color: #4b5563 !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .blocked {
+            background-color: #7f1d1d !important;
+            cursor: not-allowed !important;
+            opacity: 0.75;
+            border-color: #dc2626 !important;
+            pointer-events: none;
+        }
+        .past-time {
+            background-color: #27272a !important;
+            cursor: not-allowed !important;
+            opacity: 0.4;
+            border-color: #3f3f46 !important;
+            color: #71717a !important;
+            pointer-events: none;
+            text-decoration: line-through;
+        }
+
+        .whatsapp-btn { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+        
+        .dashboard-tab {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .dashboard-tab.active {
+            border-bottom-color: #f59e0b;
+            color: #f59e0b;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+            border: 1px solid #3f3f46;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            border-color: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-active { background-color: #10b98130; color: #10b981; }
+        .status-cancelled { background-color: #ef444430; color: #ef4444; }
+        .status-completed { background-color: #3b82f630; color: #3b82f6; }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 2rem;
+        }
+
+        .slot-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .slot-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #a1a1aa;
+        }
+        .slot-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white">
+
+    <!-- HEADER -->
+    <header class="bg-zinc-800 sticky top-0 z-50 border-b border-amber-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="cheres.png" alt="Logo Cheres" class="h-12 w-auto">
+                <div>
+                    <h1 class="logo-font text-3xl sm:text-4xl text-amber-500 tracking-tighter">CHERES</h1>
+                    <p class="text-[10px] sm:text-xs text-zinc-400 -mt-1">BARBEARIA • RIO</p>
+                </div>
+            </div>
+            <button onclick="showAdminModal()" 
+                    class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 transition text-sm">
+                <i class="fa-solid fa-lock"></i>
+                <span class="hidden sm:inline">ÁREA DO BARBEIRO</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section id="hero" class="hero-bg flex items-center relative">
+        <div id="slide1" class="hero-slides" style="background-image: url('imagem 1.jpeg'); opacity: 1;"></div>
+        <div id="slide2" class="hero-slides" style="background-image: url('imagem 2.jpeg'); opacity: 0;"></div>
+        <div id="slide3" class="hero-slides" style="background-image: url('imagem 3.jpeg'); opacity: 0;"></div>
+
+        <div class="max-w-5xl mx-auto px-6 text-center pt-16 pb-20 relative z-10">
+            <img src="cheres.png" alt="Logo" class="mx-auto h-20 sm:h-28 mb-6 opacity-90">
+            <h2 class="logo-font text-5xl sm:text-6xl md:text-7xl font-bold mb-4 tracking-tighter leading-none">
+                CORTE NA RÉGUA
+            </h2>
+            <p class="text-2xl sm:text-3xl text-amber-500 font-bold mb-3">"Corte e resenha garantida"</p>
+            <p class="text-base sm:text-lg text-zinc-300 mb-12">Desde 2018 • Rio de Janeiro</p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 px-4 max-w-lg mx-auto">
+                <button onclick="showSection('client')" 
+                        class="bg-amber-500 text-black px-8 sm:px-10 py-5 rounded-2xl font-bold text-lg sm:text-xl hover:bg-amber-400 transition flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-calendar"></i> AGENDAR AGORA
+                </button>
+                
+                <button onclick="showSection('services')" 
+                        class="bg-zinc-800 hover:bg-zinc-700 text-white px-8 sm:px-10 py-5 rounded-2xl font-bold text-lg sm:text-xl transition flex items-center justify-center gap-3 border border-zinc-600">
+                    <i class="fa-solid fa-scissors"></i> SERVIÇOS
+                </button>
+
+                <button onclick="showSection('plans')" 
+                        class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 sm:px-10 py-5 rounded-2xl font-bold text-lg sm:text-xl transition flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-star"></i> PLANOS MENSAIS
+                </button>
+            </div>
+        </div>
+
+        <a href="https://wa.me/5521967004239?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20agendar%20um%20corte%20na%20Barbearia%20Cheres." 
+           target="_blank"
+           class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-500 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-3xl sm:text-4xl shadow-2xl z-50 whatsapp-btn border-4 border-zinc-950">
+            <i class="fa-brands fa-whatsapp"></i>
+        </a>
+    </section>
+
+    <!-- CLIENT BOOKING SECTION -->
+    <section id="client-section" class="py-12 sm:py-16 bg-zinc-900 hidden">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+            <button onclick="showHero()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 font-medium text-base">
+                <i class="fa-solid fa-arrow-left"></i> Voltar para Início
+            </button>
+
+            <div class="text-center mb-10">
+                <h2 class="logo-font text-5xl sm:text-6xl font-bold mb-3 text-amber-500">AGENDAR SEU CORTE</h2>
+                <p class="text-zinc-400 text-lg">Preencha os dados e clique no horário desejado</p>
+            </div>
+
+            <div class="bg-zinc-950 border border-amber-600/30 rounded-3xl p-8 shadow-2xl">
+                <form id="bookingForm" class="space-y-8">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Nome completo</label>
+                            <input type="text" id="clientName" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Telefone (WhatsApp)</label>
+                            <input type="tel" id="clientPhone" placeholder="(21) 99999-9999" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Serviço</label>
+                            <select id="service" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
+                                <option value="">Selecione o serviço</option>
+                                <option value="Corte">Corte - R$ 35,00</option>
+                                <option value="Sobrancelha">Sobrancelha - R$ 10,00</option>
+                                <option value="Pigmentação">Pigmentação - R$ 15,00</option>
+                                <option value="Reflexo">Reflexo - R$ 75,00</option>
+                                <option value="Nevou">Nevou - R$ 85,00</option>
+                                <option value="Barba">Barba - R$ 20,00</option>
+                                <option value="Pé">Pé - R$ 15,00</option>
+                                <option value="Corte e barba">Corte e barba - R$ 45,00</option>
+                                <option value="Corte barba e sobrancelha">Corte + barba + sobrancelha - R$ 50,00</option>
+                                <option value="Corte + pigmentação">Corte + pigmentação - R$ 45,00</option>
+                                <option value="Corte + reflexo">Corte + reflexo - R$ 75,00</option>
+                                <option value="Corte + nevou">Corte + nevou - R$ 85,00</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Data (Segunda a Sexta)</label>
+                            <input type="date" id="bookingDate" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-3">Horários disponíveis (Intervalo de 1h)</label>
+                        <div class="slot-legend mb-4">
+                            <div class="slot-legend-item">
+                                <div class="slot-legend-dot" style="background:#f59e0b; border:1px solid #d97706;"></div>
+                                <span>Disponível</span>
+                            </div>
+                            <div class="slot-legend-item">
+                                <div class="slot-legend-dot" style="background:#4b5563;"></div>
+                                <span>Ocupado</span>
+                            </div>
+                            <div class="slot-legend-dot" style="background:#7f1d1d; border:1px solid #dc2626; width:12px; height:12px; border-radius:3px; display:inline-block;"></div>
+                            <span class="text-xs text-zinc-400">Bloqueado pelo barbeiro</span>
+                            <div class="slot-legend-item ml-2">
+                                <div class="slot-legend-dot" style="background:#27272a; border:1px solid #3f3f46;"></div>
+                                <span>Horário passado</span>
+                            </div>
+                        </div>
+                        <div id="timeSlots" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- SERVICES SECTION -->
+    <section id="services-section" class="py-12 sm:py-16 bg-black hidden">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6">
+            <button onclick="showHero()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 font-medium text-base">
+                <i class="fa-solid fa-arrow-left"></i> Voltar para Início
+            </button>
+            <h2 class="logo-font text-5xl sm:text-6xl font-bold text-center mb-12 text-amber-500">NOSSOS SERVIÇOS</h2>
+
+            <div class="mb-16">
+                <h3 class="text-2xl font-bold text-amber-500 mb-8 text-center">Serviços Individuais</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Corte</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 35,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Sobrancelha</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 10,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Barba</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 20,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Pigmentação</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 15,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Reflexo</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 75,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-2xl font-bold">Nevou</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 85,00</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-2xl font-bold text-amber-500 mb-8 text-center">Serviços Combinados</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-xl font-bold">Corte + Barba</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 45,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-xl font-bold">Corte + Barba + Sobrancelha</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 50,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-xl font-bold">Corte + Pigmentação</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 45,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-xl font-bold">Corte + Reflexo</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 75,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                        <h3 class="text-xl font-bold">Corte + Nevou</h3>
+                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 85,00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PLANS SECTION -->
+    <section id="plans-section" class="py-12 sm:py-16 bg-zinc-900 hidden">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6">
+            <button onclick="showHero()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 font-medium text-base">
+                <i class="fa-solid fa-arrow-left"></i> Voltar para Início
+            </button>
+            <h2 class="logo-font text-5xl sm:text-6xl font-bold text-center mb-12 text-amber-500">PLANOS MENSAIS</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <div class="bg-zinc-800 p-8 rounded-3xl border border-amber-600/20 hover:border-amber-500 transition text-center">
+                    <h3 class="text-2xl font-bold mb-4">Plano 4 Cortes</h3>
+                    <p class="text-5xl font-bold text-amber-500 mb-6">R$ 110,00</p>
+                    <ul class="space-y-3 text-zinc-300 mb-8">
+                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 4 cortes ao mês</li>
+                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Atendimento prioritário</li>
+                    </ul>
+                    <button onclick="showSection('client')" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold hover:bg-amber-400 transition">ASSINAR AGORA</button>
+                </div>
+
+                <div class="bg-zinc-800 p-8 rounded-3xl border-2 border-amber-500 transform scale-105 text-center">
+                    <div class="bg-amber-500 text-black px-4 py-2 rounded-full inline-block mb-4 font-bold text-sm">MAIS POPULAR</div>
+                    <h3 class="text-2xl font-bold mb-4">Plano 4 Cortes e Barba</h3>
+                    <p class="text-5xl font-bold text-amber-500 mb-6">R$ 140,00</p>
+                    <ul class="space-y-3 text-zinc-300 mb-8">
+                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 4 cortes e barba ao mês</li>
+                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Atendimento VIP</li>
+                    </ul>
+                    <button onclick="showSection('client')" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold hover:bg-amber-400 transition">ASSINAR AGORA</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ADMIN MODAL -->
+    <div id="adminModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-zinc-900 p-8 rounded-3xl border border-amber-500 max-w-md w-full mx-4">
+            <h2 class="text-3xl font-bold text-amber-500 mb-6">Acesso Restrito</h2>
+            <input type="password" id="adminPassword" placeholder="Digite a senha" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 mb-6 focus:outline-none focus:border-amber-500">
+            <div class="flex gap-3">
+                <button onclick="loginAdmin()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-black px-6 py-3 rounded-2xl font-bold transition">Entrar</button>
+                <button onclick="closeAdminModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-2xl font-bold transition border border-zinc-600">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="hidden bg-zinc-950 min-h-screen">
+        <div class="bg-zinc-800 border-b border-amber-500 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between">
+                <div>
+                    <h1 class="logo-font text-3xl text-amber-500">DASHBOARD BARBEIRO</h1>
+                    <p class="text-zinc-400 text-sm mt-1">Gerencie seus agendamentos e visualize analytics</p>
+                </div>
+                <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-semibold transition flex items-center gap-2">
+                    <i class="fa-solid fa-sign-out"></i> Sair
+                </button>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <div class="flex gap-6 mb-8 border-b border-zinc-700 pb-4 overflow-x-auto">
+                <button onclick="switchDashboardTab('overview')" class="dashboard-tab active whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line"></i> Visão Geral
+                </button>
+                <button onclick="switchDashboardTab('appointments')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-check"></i> Agendamentos
+                </button>
+                <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> Analytics
+                </button>
+                <button onclick="switchDashboardTab('crm')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> CRM
+                </button>
+                <button onclick="switchDashboardTab('settings')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-cog"></i> Configurações
+                </button>
+            </div>
+
+            <!-- TAB: OVERVIEW -->
+            <div id="tab-overview" class="dashboard-content">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Receita Total</p>
+                                <p id="totalRevenue" class="text-3xl font-bold text-amber-500">R$ 0,00</p>
+                            </div>
+                            <i class="fa-solid fa-money-bill-wave text-4xl text-amber-500 opacity-30"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Agendamentos Ativos</p>
+                                <p id="activeAppointments" class="text-3xl font-bold text-green-500">0</p>
+                            </div>
+                            <i class="fa-solid fa-calendar-check text-4xl text-green-500 opacity-30"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Clientes Únicos</p>
+                                <p id="uniqueClients" class="text-3xl font-bold text-blue-500">0</p>
+                            </div>
+                            <i class="fa-solid fa-users text-4xl text-blue-500 opacity-30"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Serviço Popular</p>
+                                <p id="popularService" class="text-2xl font-bold text-purple-500">-</p>
+                            </div>
+                            <i class="fa-solid fa-star text-4xl text-purple-500 opacity-30"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita por Serviço</h3>
+                        <div class="chart-container">
+                            <canvas id="serviceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Agendamentos por Dia</h3>
+                        <div class="chart-container">
+                            <canvas id="dailyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: APPOINTMENTS -->
+            <div id="tab-appointments" class="dashboard-content hidden">
+                <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-amber-500">Agendamentos</h3>
+                        <button onclick="refreshAppointments()" class="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-xl font-semibold transition flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right"></i> Atualizar
+                        </button>
+                    </div>
+                    <div id="adminAppointments" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- TAB: ANALYTICS -->
+            <div id="tab-analytics" class="dashboard-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita Semanal</h3>
+                        <div class="chart-container">
+                            <canvas id="weekChart"></canvas>
+                        </div>
+                        <p id="weekRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita Mensal</h3>
+                        <div class="chart-container">
+                            <canvas id="monthChart"></canvas>
+                        </div>
+                        <p id="monthRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
+                    </div>
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Distribuição de Serviços</h3>
+                        <div class="chart-container">
+                            <canvas id="serviceDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Agendamentos por Hora</h3>
+                        <div class="chart-container">
+                            <canvas id="hourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CRM -->
+            <div id="tab-crm" class="dashboard-content hidden">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Total de Clientes</p>
+                                <p id="crmTotalClients" class="text-3xl font-bold text-blue-400">0</p>
+                            </div>
+                            <i class="fa-solid fa-users text-4xl text-blue-400 opacity-30"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Plano 4 Cortes Ativos</p>
+                                <p id="crmPlan1" class="text-3xl font-bold text-amber-400">0</p>
+                                <p class="text-zinc-500 text-xs mt-1">R$ 110,00/mês</p>
+                            </div>
+                            <i class="fa-solid fa-scissors text-4xl text-amber-400 opacity-30"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Plano Corte+Barba Ativos</p>
+                                <p id="crmPlan2" class="text-3xl font-bold text-emerald-400">0</p>
+                                <p class="text-zinc-500 text-xs mt-1">R$ 140,00/mês</p>
+                            </div>
+                            <i class="fa-solid fa-star text-4xl text-emerald-400 opacity-30"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-amber-500">Gestão de Clientes</h3>
+                        <span id="crmClientCount" class="text-zinc-400 text-sm"></span>
+                    </div>
+                    <div class="mb-6 flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="crmSearch" oninput="filterCRM()" placeholder="🔍 Buscar por nome ou telefone..." 
+                               class="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                        <select id="crmFilter" onchange="filterCRM()" 
+                                class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            <option value="">Todos os clientes</option>
+                            <option value="frequent">Clientes Frequentes (3+)</option>
+                            <option value="new">Novos Clientes (1 visita)</option>
+                            <option value="plan1">Plano 4 Cortes</option>
+                            <option value="plan2">Plano Corte + Barba</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-zinc-700">
+                                    <th class="text-left py-3 px-4 font-semibold text-amber-500">Cliente</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-amber-500">Telefone</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-amber-500">Visitas</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-amber-500">Serviços</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-amber-500">Total Gasto</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-amber-500">Próximo Agend.</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-amber-500">Último Agend.</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-amber-500">Perfil</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crmTable">
+                                <tr><td colspan="8" class="text-center py-8 text-zinc-400">Carregando clientes...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="crmDetail" class="hidden mt-8 bg-zinc-800 rounded-2xl p-6 border border-amber-500/30">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xl font-bold text-amber-400" id="crmDetailName">—</h4>
+                            <button onclick="closeCRMDetail()" class="text-zinc-400 hover:text-white text-xl">&times;</button>
+                        </div>
+                        <div id="crmDetailContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: SETTINGS -->
+            <div id="tab-settings" class="dashboard-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 lg:col-span-2">
+                        <h3 class="text-xl font-bold mb-2 text-amber-500">
+                            <i class="fa-solid fa-clock-rotate-left mr-2"></i>Bloquear Horários Específicos
+                        </h3>
+                        <p class="text-zinc-400 text-sm mb-4">Bloqueie horários individuais em datas específicas. O horário aparecerá como indisponível para os clientes.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs text-zinc-400 mb-1">Data</label>
+                                <input type="date" id="blockTimeDate" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-zinc-400 mb-1">Horário</label>
+                                <select id="blockTimeSlot" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                                    <option value="">Selecione o horário</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="09:30">09:30</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="10:30">10:30</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="11:30">11:30</option>
+                                    <option value="12:00">12:00</option>
+                                    <option value="12:30">12:30</option>
+                                    <option value="13:00">13:00</option>
+                                    <option value="13:30">13:30</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="14:30">14:30</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="15:30">15:30</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="16:30">16:30</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="17:30">17:30</option>
+                                    <option value="18:00">18:00</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-zinc-400 mb-1">Motivo (opcional)</label>
+                                <input type="text" id="blockTimeReason" placeholder="Ex: Almoço, Compromisso..." class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+                        <button onclick="blockTimeSlot()" class="bg-red-700 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-semibold transition flex items-center gap-2">
+                            <i class="fa-solid fa-lock"></i> Bloquear Horário
+                        </button>
+                        <div class="mt-6">
+                            <h4 class="text-sm font-semibold text-zinc-300 mb-3">Horários bloqueados:</h4>
+                            <div id="blockedTimeSlotsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">
+                            <i class="fa-solid fa-calendar-xmark mr-2"></i>Bloquear Dia Inteiro
+                        </h3>
+                        <div class="space-y-4">
+                            <input type="date" id="blockDate" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            <button onclick="blockDate()" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold transition">
+                                <i class="fa-solid fa-ban"></i> Bloquear Data
+                            </button>
+                            <div id="blockedDatesList" class="mt-4 space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">
+                            <i class="fa-solid fa-clock mr-2"></i>Horário de Funcionamento
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Horário de Abertura</label>
+                                <input type="time" id="openingTime" value="09:00" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Horário de Fechamento</label>
+                                <input type="time" id="closingTime" value="18:00" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                            </div>
+                            <button onclick="saveWorkingHours()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition">
+                                <i class="fa-solid fa-save"></i> Salvar Horário
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ FIREBASE CONFIG ✅ CREDENCIAIS REAIS ============
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxCHl2NtwXEKlUfW0FZUVuN8BJMJuzuSY",
+            authDomain: "barbearia-cheres-ab0c0.firebaseapp.com",
+            databaseURL: "https://barbearia-cheres-ab0c0-default-rtdb.firebaseio.com",
+            projectId: "barbearia-cheres-ab0c0",
+            storageBucket: "barbearia-cheres-ab0c0.firebasestorage.app",
+            messagingSenderId: "79579054508",
+            appId: "1:79579054508:web:755d6d39037e2a9a22ba09"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const appointmentsRef = db.ref('appointments');
+        const blockedDatesRef = db.ref('blockedDates');
+        const blockedTimeSlotsRef = db.ref('blockedTimeSlots');
+        const historyRef = db.ref('appointmentHistory');
+
+        // ============ DATA STRUCTURES ============
+        let appointments = [];
+        let appointmentHistory = [];
+        let blockedDates = [];
+        let blockedTimeSlots = [];
+        let crmAllClients = [];
+        let weekChart, monthChart, serviceChart, dailyChart, serviceDistributionChart, hourlyChart;
+
+        const servicePrices = {
+            'Corte': 35, 'Sobrancelha': 10, 'Pigmentação': 15, 'Reflexo': 75,
+            'Nevou': 85, 'Barba': 20, 'Pé': 15, 'Corte e barba': 45,
+            'Corte barba e sobrancelha': 50, 'Corte + pigmentação': 45,
+            'Corte + reflexo': 75, 'Corte + nevou': 85
+        };
+
+        const plan2Services = ['Corte e barba', 'Corte barba e sobrancelha'];
+        const plan1Services = ['Corte', 'Corte + pigmentação', 'Corte + reflexo', 'Corte + nevou'];
+
+        // ============ AUTO-CANCEL LOGIC ============
+        function cleanupPastAppointments() {
+            const today = new Date().toISOString().split('T')[0];
+            appointments.forEach(app => {
+                if (app.date < today && app.key) {
+                    historyRef.child(app.key).set({
+                        ...app, status: 'completed',
+                        completedDate: new Date().toISOString()
+                    });
+                    appointmentsRef.child(app.key).remove();
+                }
+            });
+        }
+
+        setInterval(cleanupPastAppointments, 3600000);
+
+        // ============ FIREBASE LISTENERS ============
+        appointmentsRef.on('value', snapshot => {
+            appointments = [];
+            snapshot.forEach(child => {
+                appointments.push({ key: child.key, ...child.val() });
+            });
+            renderAdminAppointments();
+            updateAllCharts();
+            updateCRMTable();
+            cleanupPastAppointments();
+        });
+
+        historyRef.on('value', snapshot => {
+            appointmentHistory = [];
+            snapshot.forEach(child => {
+                appointmentHistory.push({ key: child.key, ...child.val() });
+            });
+            updateAllCharts();
+            updateCRMTable();
+        });
+
+        blockedDatesRef.on('value', snapshot => {
+            blockedDates = [];
+            snapshot.forEach(child => {
+                blockedDates.push({ key: child.key, date: child.val() });
+            });
+            renderBlockedDates();
+            const dateVal = document.getElementById('bookingDate').value;
+            if (dateVal) generateTimeSlots(dateVal);
+        });
+
+        blockedTimeSlotsRef.on('value', snapshot => {
+            blockedTimeSlots = [];
+            snapshot.forEach(child => {
+                blockedTimeSlots.push({ key: child.key, ...child.val() });
+            });
+            renderBlockedTimeSlots();
+            const dateVal = document.getElementById('bookingDate').value;
+            if (dateVal) generateTimeSlots(dateVal);
+        });
+
+        // ============ DASHBOARD TAB SWITCHING ============
+        function switchDashboardTab(tab) {
+            document.querySelectorAll('.dashboard-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.dashboard-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            event.target.closest('.dashboard-tab').classList.add('active');
+            setTimeout(() => {
+                if (tab === 'analytics') {
+                    [weekChart, monthChart, serviceDistributionChart, hourlyChart].forEach(c => c && c.resize());
+                }
+            }, 100);
+        }
+
+        // ============ STATS ============
+        function calculateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const activeApps = appointments.filter(a => a.date >= today);
+            const uniqueClients = [...new Set(appointments.map(a => a.name))].length;
+
+            const serviceCount = {};
+            appointments.forEach(app => {
+                serviceCount[app.service] = (serviceCount[app.service] || 0) + 1;
+            });
+            const popularService = Object.keys(serviceCount).length
+                ? Object.keys(serviceCount).reduce((a, b) => serviceCount[a] > serviceCount[b] ? a : b)
+                : 'Nenhum';
+
+            document.getElementById('activeAppointments').textContent = activeApps.length;
+            document.getElementById('uniqueClients').textContent = uniqueClients;
+            document.getElementById('popularService').textContent = popularService;
+        }
+
+        function calculateTotalRevenue() {
+            const all = [...appointments, ...appointmentHistory];
+            const total = all.reduce((sum, app) => sum + (servicePrices[app.service] || 0), 0);
+            document.getElementById('totalRevenue').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        // ============ CHARTS ============
+        function getServiceData() {
+            const all = [...appointments, ...appointmentHistory];
+            const d = {};
+            all.forEach(app => { d[app.service] = (d[app.service] || 0) + (servicePrices[app.service] || 0); });
+            return d;
+        }
+
+        function getDailyData() {
+            const d = {};
+            appointments.forEach(app => { d[app.date] = (d[app.date] || 0) + 1; });
+            return d;
+        }
+
+        function getWeeklyRevenue() {
+            const all = [...appointments, ...appointmentHistory];
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            let total = 0;
+            all.forEach(app => {
+                const d = new Date(app.date);
+                if (d >= weekStart && d <= new Date()) total += servicePrices[app.service] || 0;
+            });
+            document.getElementById('weekRevenue').textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            return total;
+        }
+
+        function getMonthlyRevenue() {
+            const all = [...appointments, ...appointmentHistory];
+            const today = new Date();
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            let total = 0;
+            all.forEach(app => {
+                const d = new Date(app.date);
+                if (d >= monthStart && d <= new Date()) total += servicePrices[app.service] || 0;
+            });
+            document.getElementById('monthRevenue').textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            return total;
+        }
+
+        function getHourlyData() {
+            const d = {};
+            appointments.forEach(app => {
+                const h = app.time.split(':')[0];
+                d[h] = (d[h] || 0) + 1;
+            });
+            return d;
+        }
+
+        function updateAllCharts() {
+            calculateStats();
+            calculateTotalRevenue();
+            updateServiceChart();
+            updateDailyChart();
+            updateWeekChart();
+            updateMonthChart();
+            updateServiceDistributionChart();
+            updateHourlyChart();
+        }
+
+        const CHART_COLORS = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#f97316','#06b6d4','#84cc16'];
+
+        function updateServiceChart() {
+            const data = getServiceData();
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            if (serviceChart) serviceChart.destroy();
+            const ctx = document.getElementById('serviceChart');
+            if (!ctx) return;
+            serviceChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
+            });
+        }
+
+        function updateDailyChart() {
+            const data = getDailyData();
+            const labels = Object.keys(data).sort();
+            const values = labels.map(l => data[l]);
+            if (dailyChart) dailyChart.destroy();
+            const ctx = document.getElementById('dailyChart');
+            if (!ctx) return;
+            dailyChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Agendamentos', data: values.length ? values : [0], backgroundColor: '#f59e0b', borderColor: '#d97706', borderWidth: 2, borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
+            });
+        }
+
+        function updateWeekChart() {
+            const data = getServiceData();
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            if (weekChart) weekChart.destroy();
+            const ctx = document.getElementById('weekChart');
+            if (!ctx) return;
+            weekChart = new Chart(ctx, {
+                type: 'pie',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
+            });
+            getWeeklyRevenue();
+        }
+
+        function updateMonthChart() {
+            const data = getServiceData();
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            if (monthChart) monthChart.destroy();
+            const ctx = document.getElementById('monthChart');
+            if (!ctx) return;
+            monthChart = new Chart(ctx, {
+                type: 'pie',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
+            });
+            getMonthlyRevenue();
+        }
+
+        function updateServiceDistributionChart() {
+            const data = getServiceData();
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            if (serviceDistributionChart) serviceDistributionChart.destroy();
+            const ctx = document.getElementById('serviceDistributionChart');
+            if (!ctx) return;
+            serviceDistributionChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Receita (R$)', data: values.length ? values : [0], backgroundColor: '#10b981', borderColor: '#059669', borderWidth: 2, borderRadius: 8 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
+            });
+        }
+
+        function updateHourlyChart() {
+            const data = getHourlyData();
+            const labels = Object.keys(data).sort();
+            const values = labels.map(l => data[l]);
+            if (hourlyChart) hourlyChart.destroy();
+            const ctx = document.getElementById('hourlyChart');
+            if (!ctx) return;
+            hourlyChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Agendamentos', data: values.length ? values : [0], borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#8b5cf6', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
+            });
+        }
+
+        // ============ CRM ============
+        function buildClientData() {
+            const clientMap = {};
+            const today = new Date().toISOString().split('T')[0];
+            const all = [...appointments, ...appointmentHistory];
+
+            all.forEach(app => {
+                const key = app.phone;
+                if (!clientMap[key]) {
+                    clientMap[key] = {
+                        name: app.name, phone: app.phone, visits: 0, totalSpent: 0,
+                        services: {}, lastAppointment: null, nextAppointment: null, allDates: []
+                    };
+                }
+                const c = clientMap[key];
+                c.visits++;
+                c.totalSpent += servicePrices[app.service] || 0;
+                c.services[app.service] = (c.services[app.service] || 0) + 1;
+                c.allDates.push({ date: app.date, time: app.time, service: app.service });
+                if (app.date <= today) {
+                    if (!c.lastAppointment || app.date > c.lastAppointment) c.lastAppointment = app.date;
+                }
+                if (app.date > today) {
+                    if (!c.nextAppointment || app.date < c.nextAppointment) c.nextAppointment = app.date;
+                }
+            });
+
+            return Object.values(clientMap).sort((a, b) => b.visits - a.visits);
+        }
+
+        function getClientProfile(client) {
+            if (client.visits >= 3) return { label: 'VIP', color: 'text-amber-400', bg: 'bg-amber-400/20' };
+            if (client.visits === 1) return { label: 'Novo', color: 'text-blue-400', bg: 'bg-blue-400/20' };
+            return { label: 'Regular', color: 'text-green-400', bg: 'bg-green-400/20' };
+        }
+
+        function getClientPlan(client) {
+            const serviceNames = Object.keys(client.services);
+            const hasPlan2 = serviceNames.some(s => plan2Services.includes(s));
+            const hasPlan1 = serviceNames.some(s => plan1Services.includes(s));
+            if (hasPlan2) return { label: 'Plano Corte+Barba', color: 'text-emerald-400', bg: 'bg-emerald-400/20' };
+            if (hasPlan1) return { label: 'Plano 4 Cortes', color: 'text-amber-400', bg: 'bg-amber-400/20' };
+            return null;
+        }
+
+        function updateCRMTable() {
+            crmAllClients = buildClientData();
+            const today = new Date().toISOString().split('T')[0];
+            let plan1Count = 0, plan2Count = 0;
+            crmAllClients.forEach(client => {
+                if (client.nextAppointment) {
+                    const plan = getClientPlan(client);
+                    if (plan && plan.label === 'Plano Corte+Barba') plan2Count++;
+                    else if (plan && plan.label === 'Plano 4 Cortes') plan1Count++;
+                }
+            });
+            document.getElementById('crmTotalClients').textContent = crmAllClients.length;
+            document.getElementById('crmPlan1').textContent = plan1Count;
+            document.getElementById('crmPlan2').textContent = plan2Count;
+            filterCRM();
+        }
+
+        function filterCRM() {
+            const search = (document.getElementById('crmSearch').value || '').toLowerCase();
+            const filter = document.getElementById('crmFilter').value;
+            let clients = crmAllClients.filter(c => {
+                const matchSearch = !search || c.name.toLowerCase().includes(search) || c.phone.includes(search);
+                let matchFilter = true;
+                if (filter === 'frequent') matchFilter = c.visits >= 3;
+                if (filter === 'new') matchFilter = c.visits === 1;
+                if (filter === 'plan1') { const p = getClientPlan(c); matchFilter = p && p.label === 'Plano 4 Cortes'; }
+                if (filter === 'plan2') { const p = getClientPlan(c); matchFilter = p && p.label === 'Plano Corte+Barba'; }
+                return matchSearch && matchFilter;
+            });
+            document.getElementById('crmClientCount').textContent = `${clients.length} cliente(s) encontrado(s)`;
+            renderCRMTable(clients);
+        }
+
+        function renderCRMTable(clients) {
+            const tbody = document.getElementById('crmTable');
+            if (!clients.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-zinc-400">Nenhum cliente encontrado.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = clients.map(client => {
+                const profile = getClientProfile(client);
+                const plan = getClientPlan(client);
+                const topService = Object.entries(client.services).sort((a, b) => b[1] - a[1])[0];
+                return `
+                <tr class="border-b border-zinc-700 hover:bg-zinc-800/60 transition cursor-pointer" onclick="showCRMDetail('${client.phone}')">
+                    <td class="py-3 px-4">
+                        <div class="font-semibold text-white">${client.name}</div>
+                        ${plan ? `<span class="text-xs ${plan.color} ${plan.bg} px-2 py-0.5 rounded-full">${plan.label}</span>` : ''}
+                    </td>
+                    <td class="py-3 px-4">
+                        <a href="https://wa.me/55${client.phone.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()"
+                           class="text-green-400 hover:text-green-300 flex items-center gap-1">
+                            <i class="fa-brands fa-whatsapp text-xs"></i> ${client.phone}
+                        </a>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="${profile.bg} ${profile.color} px-3 py-1 rounded-full text-xs font-bold">${client.visits}</span>
+                    </td>
+                    <td class="py-3 px-4 text-zinc-300 text-xs">${topService ? `${topService[0]} (×${topService[1]})` : '—'}</td>
+                    <td class="py-3 px-4 text-right font-bold text-emerald-400">R$ ${client.totalSpent.toFixed(2).replace('.', ',')}</td>
+                    <td class="py-3 px-4 text-xs ${client.nextAppointment ? 'text-amber-400' : 'text-zinc-500'}">${client.nextAppointment || '—'}</td>
+                    <td class="py-3 px-4 text-xs text-zinc-400">${client.lastAppointment || '—'}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="${profile.bg} ${profile.color} px-2 py-1 rounded-full text-xs font-bold">${profile.label}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function showCRMDetail(phone) {
+            const client = crmAllClients.find(c => c.phone === phone);
+            if (!client) return;
+            document.getElementById('crmDetailName').textContent = `${client.name} — Histórico completo`;
+            const sorted = [...client.allDates].sort((a, b) => b.date.localeCompare(a.date));
+            const rows = sorted.map(d => `
+                <tr class="border-b border-zinc-700">
+                    <td class="py-2 px-4 text-zinc-300">${d.date}</td>
+                    <td class="py-2 px-4 text-zinc-300">${d.time || '—'}</td>
+                    <td class="py-2 px-4 text-amber-400">${d.service}</td>
+                    <td class="py-2 px-4 text-emerald-400 text-right">R$ ${(servicePrices[d.service] || 0).toFixed(2).replace('.', ',')}</td>
+                </tr>`).join('');
+            document.getElementById('crmDetailContent').innerHTML = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center">
+                        <p class="text-xs text-zinc-400 mb-1">Visitas</p>
+                        <p class="text-2xl font-bold text-blue-400">${client.visits}</p>
+                    </div>
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center">
+                        <p class="text-xs text-zinc-400 mb-1">Total Gasto</p>
+                        <p class="text-2xl font-bold text-emerald-400">R$ ${client.totalSpent.toFixed(2).replace('.', ',')}</p>
+                    </div>
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center">
+                        <p class="text-xs text-zinc-400 mb-1">Próximo</p>
+                        <p class="text-lg font-bold text-amber-400">${client.nextAppointment || '—'}</p>
+                    </div>
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center">
+                        <p class="text-xs text-zinc-400 mb-1">Último</p>
+                        <p class="text-lg font-bold text-zinc-300">${client.lastAppointment || '—'}</p>
+                    </div>
+                </div>
+                <h5 class="text-sm font-semibold text-zinc-300 mb-3">Histórico de visitas:</h5>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead><tr class="border-b border-zinc-600">
+                            <th class="text-left py-2 px-4 text-zinc-400">Data</th>
+                            <th class="text-left py-2 px-4 text-zinc-400">Horário</th>
+                            <th class="text-left py-2 px-4 text-zinc-400">Serviço</th>
+                            <th class="text-right py-2 px-4 text-zinc-400">Valor</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+            document.getElementById('crmDetail').classList.remove('hidden');
+            document.getElementById('crmDetail').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeCRMDetail() {
+            document.getElementById('crmDetail').classList.add('hidden');
+        }
+
+        // ============ APPOINTMENT RENDERING ============
+        function renderAdminAppointments() {
+            const container = document.getElementById('adminAppointments');
+            container.innerHTML = '';
+            const today = new Date().toISOString().split('T')[0];
+            const sorted = [...appointments].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+            if (!sorted.length) {
+                container.innerHTML = '<p class="text-zinc-400 text-center py-10">Nenhum agendamento registrado ainda.</p>';
+                return;
+            }
+            sorted.forEach(app => {
+                const price = servicePrices[app.service] || 0;
+                const isPast = app.date < today;
+                const statusClass = isPast ? 'status-cancelled' : 'status-active';
+                const statusText = isPast ? 'Passado' : 'Ativo';
+                const div = document.createElement('div');
+                div.className = 'bg-zinc-800 p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 border border-zinc-700 hover:border-amber-500 transition';
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <p class="font-semibold text-white">${app.name}</p>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                        <p class="text-green-400 text-sm">${app.phone}</p>
+                        <p class="text-amber-400">${app.service}</p>
+                        <p class="text-zinc-400 text-sm">${app.date} • ${app.time}</p>
+                    </div>
+                    <div class="text-right flex flex-col justify-between min-w-[120px]">
+                        <p class="text-emerald-400 font-bold text-xl">R$ ${price.toFixed(2).replace('.', ',')}</p>
+                        ${!isPast ? `<button onclick="cancelAppointment('${app.key}')" class="mt-4 text-red-400 hover:text-red-500 text-sm font-medium transition">Cancelar</button>` : '<p class="text-zinc-500 text-sm mt-4">—</p>'}
+                    </div>`;
+                container.appendChild(div);
+            });
+        }
+
+        function cancelAppointment(key) {
+            if (confirm('Cancelar este agendamento?')) {
+                appointmentsRef.child(key).remove()
+                    .then(() => alert('✅ Agendamento cancelado!'))
+                    .catch(err => alert('Erro: ' + err.message));
+            }
+        }
+
+        function refreshAppointments() {
+            renderAdminAppointments();
+            alert('✅ Atualizado!');
+        }
+
+        // ============ BLOCKED DATES ============
+        function blockDate() {
+            const date = document.getElementById('blockDate').value;
+            if (!date) { alert('Selecione uma data!'); return; }
+            blockedDatesRef.push(date).then(() => {
+                alert('✅ Data bloqueada!');
+                document.getElementById('blockDate').value = '';
+            });
+        }
+
+        function renderBlockedDates() {
+            const container = document.getElementById('blockedDatesList');
+            container.innerHTML = '';
+            if (!blockedDates.length) {
+                container.innerHTML = '<p class="text-zinc-400 text-sm">Nenhuma data bloqueada.</p>';
+                return;
+            }
+            blockedDates.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-zinc-800 p-3 rounded-lg';
+                div.innerHTML = `
+                    <span class="text-sm text-zinc-300"><i class="fa-solid fa-calendar-xmark text-red-400 mr-2"></i>${item.date}</span>
+                    <button onclick="unblockDate('${item.key}')" class="text-red-400 hover:text-red-500 text-sm font-medium">Desbloquear</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function unblockDate(key) {
+            blockedDatesRef.child(key).remove();
+        }
+
+        // ============ BLOQUEAR HORÁRIOS ============
+        function blockTimeSlot() {
+            const date = document.getElementById('blockTimeDate').value;
+            const time = document.getElementById('blockTimeSlot').value;
+            const reason = document.getElementById('blockTimeReason').value.trim();
+            if (!date || !time) { alert('Selecione a data e o horário!'); return; }
+            const alreadyBlocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
+            if (alreadyBlocked) { alert('Este horário já está bloqueado!'); return; }
+            blockedTimeSlotsRef.push({ date, time, reason: reason || 'Bloqueado' }).then(() => {
+                alert(`✅ Horário ${time} do dia ${date} bloqueado!`);
+                document.getElementById('blockTimeReason').value = '';
+            });
+        }
+
+        function unblockTimeSlot(key) {
+            if (confirm('Desbloquear este horário?')) {
+                blockedTimeSlotsRef.child(key).remove();
+            }
+        }
+
+        function renderBlockedTimeSlots() {
+            const container = document.getElementById('blockedTimeSlotsList');
+            container.innerHTML = '';
+            if (!blockedTimeSlots.length) {
+                container.innerHTML = '<p class="text-zinc-400 text-sm">Nenhum horário bloqueado.</p>';
+                return;
+            }
+            const byDate = {};
+            blockedTimeSlots.forEach(s => {
+                if (!byDate[s.date]) byDate[s.date] = [];
+                byDate[s.date].push(s);
+            });
+            Object.keys(byDate).sort().forEach(date => {
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'bg-zinc-800 rounded-xl p-3 mb-2';
+                dateDiv.innerHTML = `<p class="text-xs font-bold text-amber-400 mb-2"><i class="fa-solid fa-calendar mr-1"></i>${date}</p>`;
+                byDate[date].sort((a, b) => a.time.localeCompare(b.time)).forEach(slot => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between py-1 pl-2';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-mono text-white bg-red-900/50 border border-red-700 px-2 py-0.5 rounded">${slot.time}</span>
+                            <span class="text-xs text-zinc-400">${slot.reason || 'Bloqueado'}</span>
+                        </div>
+                        <button onclick="unblockTimeSlot('${slot.key}')" class="text-red-400 hover:text-red-300 text-xs font-medium">
+                            <i class="fa-solid fa-lock-open mr-1"></i>Liberar
+                        </button>`;
+                    dateDiv.appendChild(row);
+                });
+                container.appendChild(dateDiv);
+            });
+        }
+
+        // ============ WORKING HOURS ============
+        function saveWorkingHours() {
+            const opening = document.getElementById('openingTime').value;
+            const closing = document.getElementById('closingTime').value;
+            alert(`✅ Horário atualizado!\nAbertura: ${opening}\nFechamento: ${closing}`);
+        }
+
+        // ============ TIME SLOTS ============
+        function isTimePast(date, time) {
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            if (date !== today) return date < today;
+            const [h, m] = time.split(':').map(Number);
+            const slotDate = new Date();
+            slotDate.setHours(h, m, 0, 0);
+            return now >= slotDate;
+        }
+
+        function generateTimeSlots(date) {
+            const container = document.getElementById('timeSlots');
+            container.innerHTML = '';
+            if (!date) return;
+
+            const selectedDate = new Date(date + 'T00:00:00');
+            const dayOfWeek = selectedDate.getDay();
+
+            if (dayOfWeek === 0 || dayOfWeek === 1) {
+                container.innerHTML = '<p class="col-span-full text-center text-red-400 py-4"><i class="fa-solid fa-ban mr-2"></i>Fechado aos domingos e segundas</p>';
+                return;
+            }
+
+            const isDateBlocked = blockedDates.some(item => item.date === date);
+            if (isDateBlocked) {
+                container.innerHTML = '<p class="col-span-full text-center text-red-400 py-4"><i class="fa-solid fa-calendar-xmark mr-2"></i>Data bloqueada pelo barbeiro</p>';
+                return;
+            }
+
+            const times = [];
+            for (let h = 9; h <= 18; h++) { const hh = h.toString().padStart(2, '0'); times.push(`${hh}:00`); if (h < 18) times.push(`${hh}:30`); }
+
+            times.forEach(time => {
+                const isBooked = appointments.some(a => a.date === date && a.time === time);
+                const blockedSlot = blockedTimeSlots.find(s => s.date === date && s.time === time);
+                const isBlocked = !!blockedSlot;
+                const isPast = isTimePast(date, time);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'slot-btn w-full py-3.5 text-sm font-medium rounded-2xl border transition-all';
+
+                if (isPast) {
+                    btn.className += ' past-time border-zinc-700';
+                    btn.textContent = time;
+                    btn.title = 'Horário passado';
+                } else if (isBlocked) {
+                    btn.className += ' blocked border-red-800';
+                    btn.innerHTML = `${time}<br><span style="font-size:10px;opacity:0.8">${blockedSlot.reason || 'Bloqueado'}</span>`;
+                    btn.title = `Bloqueado: ${blockedSlot.reason || ''}`;
+                } else if (isBooked) {
+                    btn.className += ' booked border-zinc-700';
+                    btn.textContent = time;
+                    btn.title = 'Horário ocupado';
+                } else {
+                    btn.className += ' border-amber-600 hover:bg-amber-500 hover:text-black';
+                    btn.textContent = time;
+                    btn.onclick = () => selectTime(time, btn);
+                }
+
+                container.appendChild(btn);
+            });
+        }
+
+        function selectTime(time, element) {
+            const name = document.getElementById('clientName').value.trim();
+            const phone = document.getElementById('clientPhone').value.trim();
+            const service = document.getElementById('service').value;
+            const date = document.getElementById('bookingDate').value;
+
+            if (!name || !phone || !service || !date) {
+                alert('❌ Preencha todos os campos antes de escolher o horário.');
+                return;
+            }
+
+            document.querySelectorAll('#timeSlots button').forEach(b => {
+                if (!b.classList.contains('booked') && !b.classList.contains('blocked') && !b.classList.contains('past-time')) {
+                    b.classList.remove('bg-amber-500', 'text-black');
+                    b.classList.add('border-amber-600');
+                }
+            });
+
+            element.classList.remove('border-amber-600');
+            element.classList.add('bg-amber-500', 'text-black');
+
+            if (confirm(`Confirmar agendamento para ${time}?`)) {
+                saveAppointment(name, phone, service, date, time);
+            }
+        }
+
+        function saveAppointment(name, phone, service, date, time) {
+            const isBooked = appointments.some(a => a.date === date && a.time === time);
+            const isBlocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
+            if (isBooked || isBlocked) {
+                alert('Este horário não está disponível!');
+                generateTimeSlots(date);
+                return;
+            }
+            appointmentsRef.push({ name, phone, service, date, time, status: 'active' }).then(() => {
+                alert(`✅ Agendamento confirmado!\n\nNome: ${name}\nServiço: ${service}\nData: ${date}\nHorário: ${time}`);
+                document.getElementById('bookingForm').reset();
+                document.getElementById('bookingDate').value = date;
+                generateTimeSlots(date);
+            }).catch(err => alert('Erro ao salvar: ' + err.message));
+        }
+
+        // ============ ADMIN ============
+        function showAdminModal() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('adminPassword').focus();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function loginAdmin() {
+            if (document.getElementById('adminPassword').value === 'barbeiro2026') {
+                closeAdminModal();
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                ['hero', 'client-section', 'services-section', 'plans-section'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                renderAdminAppointments();
+                updateAllCharts();
+            } else {
+                alert('Senha incorreta!');
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+            showHero();
+        }
+
+        // ============ NAVIGATION ============
+        function showSection(section) {
+            ['hero', 'client-section', 'services-section', 'plans-section'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            if (section === 'client') {
+                document.getElementById('client-section').classList.remove('hidden');
+                generateTimeSlots(document.getElementById('bookingDate').value);
+            }
+            if (section === 'services') document.getElementById('services-section').classList.remove('hidden');
+            if (section === 'plans') document.getElementById('plans-section').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showHero() {
+            ['client-section', 'services-section', 'plans-section'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('hero').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ============ HERO SLIDESHOW ============
+        let currentSlide = 1;
+        function changeSlide() {
+            document.getElementById('slide1').style.opacity = currentSlide === 1 ? 1 : 0;
+            document.getElementById('slide2').style.opacity = currentSlide === 2 ? 1 : 0;
+            document.getElementById('slide3').style.opacity = currentSlide === 3 ? 1 : 0;
+            currentSlide = currentSlide === 3 ? 1 : currentSlide + 1;
+        }
+        setInterval(changeSlide, 5000);
+
+        // ============ INITIALIZATION ============
+        window.onload = () => {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('bookingDate');
+            dateInput.setAttribute('min', today);
+            dateInput.value = today;
+            dateInput.addEventListener('change', () => generateTimeSlots(dateInput.value));
+
+            document.getElementById('blockDate').value = today;
+            document.getElementById('blockTimeDate').value = today;
+
+            generateTimeSlots(today);
+            document.getElementById('hero').classList.remove('hidden');
+            cleanupPastAppointments();
+
+            setInterval(() => {
+                const currentDate = document.getElementById('bookingDate').value;
+                if (currentDate && !document.getElementById('client-section').classList.contains('hidden')) {
+                    generateTimeSlots(currentDate);
+                }
+            }, 60000);
+        };
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeAdminModal();
+        });
+    </script>
+</body>
+</html>
