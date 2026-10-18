@@ -145,7 +145,7 @@ describe('cliente logado', () => {
 });
 
 describe('ativação e acesso do admin', () => {
-    const andre = () => db('uid-andre', { email: 'andre.cheres@gmail.com' });
+    const andre = () => db('uid-andre', { email: 'andre.cheres13@gmail.com' });
 
     test('código certo com outro e-mail não vira admin', async () => {
         await assertFails(set(ref(db('uid-intruso', { email: 'intruso@x.com' }), 'admins/uid-intruso'), SETUP_CODE));
@@ -161,7 +161,7 @@ describe('ativação e acesso do admin', () => {
     });
     test('depois do primeiro admin, o código não serve para mais ninguém', async () => {
         await assertSucceeds(set(ref(andre(), 'admins/uid-andre'), SETUP_CODE));
-        await assertFails(set(ref(db('uid-intruso', { email: 'andre.cheres@gmail.com' }), 'admins/uid-intruso'), SETUP_CODE));
+        await assertFails(set(ref(db('uid-intruso', { email: 'andre.cheres13@gmail.com' }), 'admins/uid-intruso'), SETUP_CODE));
     });
     test('admin lê e altera tudo', async () => {
         await assertSucceeds(set(ref(andre(), 'admins/uid-andre'), SETUP_CODE));

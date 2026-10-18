@@ -6,7 +6,7 @@
     "admins": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid && auth.token.email === 'andre.cheres@gmail.com' && !root.child('admins').exists() && root.child('adminSetupCode').isString() && newData.val() === root.child('adminSetupCode').val()"
+        ".write": "auth != null && auth.uid === $uid && auth.token.email === 'andre.cheres13@gmail.com' && !root.child('admins').exists() && root.child('adminSetupCode').isString() && newData.val() === root.child('adminSetupCode').val()"
       }
     },
 
