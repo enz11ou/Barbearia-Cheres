@@ -147,11 +147,7 @@
                 <input type="email" id="adminEmail" autocomplete="username" placeholder="E-mail" required class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500">
                 <label for="adminPassword" class="sr-only">Senha</label>
                 <input type="password" id="adminPassword" autocomplete="current-password" placeholder="Senha" required class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500">
-                <div id="adminSetupBox" class="hidden space-y-2">
-                    <label for="adminSetupCode" class="sr-only">Código de ativação</label>
-                    <input type="text" id="adminSetupCode" autocomplete="off" spellcheck="false" placeholder="Código de ativação" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 font-mono focus:outline-none focus:border-amber-500">
-                    <p class="text-xs text-zinc-400">Só no primeiro acesso: crie seu e-mail e senha e informe o código de ativação que você recebeu. Depois disso, entre só com e-mail e senha.</p>
-                </div>
+                <p id="adminSetupBox" class="hidden text-xs text-zinc-400">Recebeu um convite para o painel? Use o e-mail convidado e crie uma senha. Vamos enviar um link para confirmar o e-mail; depois de confirmar, volte aqui e toque em Entrar.</p>
                 <button type="submit" id="adminSubmitBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-black px-6 py-3 rounded-2xl font-bold transition disabled:opacity-60">Entrar</button>
             </form>
             <div class="flex justify-between gap-4 mt-4 text-sm">
@@ -425,6 +421,21 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 lg:col-span-2">
                         <h3 class="text-xl font-bold mb-2 text-amber-500">
+                            <i class="fa-solid fa-user-shield mr-2"></i>Administradores
+                        </h3>
+                        <p class="text-zinc-400 text-sm mb-4">Quem tem acesso a este painel. Para adicionar alguém, envie um convite para o e-mail da pessoa: ela abre esta página, toca em "Primeiro acesso", cria a senha e confirma o e-mail.</p>
+                        <form onsubmit="event.preventDefault(); inviteAdmin();" class="flex flex-col sm:flex-row gap-3 mb-5">
+                            <label for="inviteEmail" class="sr-only">E-mail do novo administrador</label>
+                            <input type="email" id="inviteEmail" required placeholder="email@exemplo.com" class="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-500">
+                            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold transition whitespace-nowrap">
+                                <i class="fa-solid fa-paper-plane mr-1"></i>Convidar
+                            </button>
+                        </form>
+                        <div id="adminsList" class="space-y-2"></div>
+                    </div>
+
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 lg:col-span-2">
+                        <h3 class="text-xl font-bold mb-2 text-amber-500">
                             <i class="fa-solid fa-clock-rotate-left mr-2"></i>Bloquear Horários Específicos
                         </h3>
                         <p class="text-zinc-400 text-sm mb-4">Bloqueie horários individuais em datas específicas. O horário aparecerá como indisponível para os clientes.</p>
@@ -649,6 +660,7 @@
         function startAdminData() {
             if (adminDataStarted) return;
             adminDataStarted = true;
+            startAdminsData();
 
             appointmentsRef.on('value', snapshot => {
                 appointments = [];
@@ -1600,7 +1612,8 @@
         }
 
         // Login oficial do Firebase. Só entra quem está cadastrado em "admins" no banco.
-        // Primeiro acesso: o barbeiro cria e-mail e senha e informa o código de ativação (uso único).
+        // Novos admins entram por convite (adminInvites): criam a conta, confirmam o e-mail e o
+        // primeiro login com o e-mail confirmado transforma o convite em acesso.
         let adminSetupMode = false;
         let adminBusy = false;
 
@@ -1623,7 +1636,7 @@
             adminSetupMode = !adminSetupMode;
             document.getElementById('adminSetupBox').classList.toggle('hidden', !adminSetupMode);
             document.getElementById('adminLoginTitle').textContent = adminSetupMode ? 'Primeiro acesso' : 'Acesso Restrito';
-            document.getElementById('adminSubmitBtn').textContent = adminSetupMode ? 'Ativar acesso' : 'Entrar';
+            document.getElementById('adminSubmitBtn').textContent = adminSetupMode ? 'Criar acesso' : 'Entrar';
             document.getElementById('adminModeBtn').textContent = adminSetupMode ? 'Já tenho acesso' : 'Primeiro acesso';
             document.getElementById('adminPassword').autocomplete = adminSetupMode ? 'new-password' : 'current-password';
         }
@@ -1636,46 +1649,81 @@
             }
         }
 
+        // Chave do convite no banco: o e-mail com "." trocado por "," (o Firebase não aceita "." em chaves).
+        function inviteKey(email) {
+            return String(email).trim().toLowerCase().split('.').join(',');
+        }
+
+        // Transforma o convite do e-mail logado em acesso de admin. Só funciona com o e-mail confirmado.
+        async function claimInvite(user) {
+            await user.getIdToken(true);   // atualiza o token para o banco enxergar o e-mail confirmado
+            try {
+                await db.ref('admins/' + user.uid).set(user.email);
+            } catch (e) {
+                return false;
+            }
+            await db.ref('adminInvites/' + inviteKey(user.email)).remove()
+                .catch(err => console.error('Convite aceito, mas não foi apagado:', err));
+            return true;
+        }
+
+        async function hasInvite(email) {
+            try {
+                return (await db.ref('adminInvites/' + inviteKey(email)).once('value')).exists();
+            } catch (e) {
+                return false;
+            }
+        }
+
         async function loginAdmin() {
             if (adminBusy) return;
             const email = document.getElementById('adminEmail').value.trim().toLowerCase();
             const password = document.getElementById('adminPassword').value;
-            const code = document.getElementById('adminSetupCode').value.trim();
             if (!email || !password) { alert('❌ Informe e-mail e senha.'); return; }
-            if (adminSetupMode && !code) { alert('❌ Informe o código de ativação.'); return; }
 
             const btn = document.getElementById('adminSubmitBtn');
             adminBusy = true;
             btn.disabled = true;
             try {
+                let user;
+                let created = false;
                 if (adminSetupMode) {
-                    let cred;
                     try {
-                        cred = await auth.createUserWithEmailAndPassword(email, password);
+                        user = (await auth.createUserWithEmailAndPassword(email, password)).user;
+                        created = true;
                     } catch (e) {
                         if (e.code !== 'auth/email-already-in-use') throw e;
-                        cred = await auth.signInWithEmailAndPassword(email, password);
+                        user = (await auth.signInWithEmailAndPassword(email, password)).user;
                     }
-                    try {
-                        await db.ref('admins/' + cred.user.uid).set(code);
-                    } catch (e) {
-                        await auth.signOut();
-                        alert('❌ Código de ativação inválido ou já utilizado.\n\nAo tentar de novo, use o mesmo e-mail e a mesma senha.');
-                        return;
-                    }
-                    await db.ref('adminSetupCode').remove().catch(() => {});
-                    alert('✅ Acesso ativado! Da próxima vez, entre só com e-mail e senha.');
-                    toggleAdminSetup();
                 } else {
-                    const { user } = await auth.signInWithEmailAndPassword(email, password);
-                    if (!(await isAdmin(user.uid))) {
-                        await auth.signOut();
-                        alert('❌ Esta conta não tem acesso ao painel.');
-                        return;
-                    }
+                    user = (await auth.signInWithEmailAndPassword(email, password)).user;
                 }
+
+                if (!(await isAdmin(user.uid))) {
+                    // Quem não é admin só continua se tiver convite; sem convite, nenhum e-mail é enviado.
+                    let accepted = false;
+                    try {
+                        if (!(await hasInvite(user.email))) {
+                            if (created) await user.delete().catch(() => {});
+                            alert('❌ Esta conta não tem acesso ao painel. Peça um convite ao administrador.');
+                            return;
+                        }
+                        await user.reload();
+                        if (!user.emailVerified) {
+                            await user.sendEmailVerification({ url: window.location.origin + '/admin' }).catch(() => user.sendEmailVerification());
+                            alert(`📧 Enviamos um link de confirmação para ${email}.\n\nAbra o e-mail, confirme e depois volte aqui e toque em Entrar.\n\n${EMAIL_HINT}`);
+                            if (adminSetupMode) toggleAdminSetup();
+                            return;
+                        }
+                        accepted = await claimInvite(user);
+                        if (!accepted) { alert('❌ Não foi possível aceitar o convite. Tente entrar de novo em alguns segundos.'); return; }
+                    } finally {
+                        if (!accepted) await auth.signOut().catch(() => {});
+                    }
+                    alert('✅ Convite aceito! Você agora tem acesso ao painel.');
+                }
+                if (adminSetupMode) toggleAdminSetup();
                 document.getElementById('adminPassword').value = '';
-                document.getElementById('adminSetupCode').value = '';
                 showDashboard();
             } catch (err) {
                 alert('❌ ' + adminAuthError(err));
@@ -1690,7 +1738,7 @@
             if (!email || !email.includes('@')) { alert('❌ Digite seu e-mail no campo acima e toque de novo em "Esqueci minha senha".'); return; }
             try {
                 await auth.sendPasswordResetEmail(email);
-                alert('Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha. Confira também o spam.');
+                alert('Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha.\n\n' + EMAIL_HINT);
             } catch (err) {
                 alert('❌ ' + adminAuthError(err));
             }
@@ -1698,6 +1746,73 @@
 
         function logoutAdmin() {
             auth.signOut().finally(() => window.location.reload());
+        }
+
+        // ============ ADMINISTRADORES ============
+        // Onde o e-mail do Firebase costuma aparecer (remetente padrão do projeto).
+        const EMAIL_HINT = 'O e-mail vem de noreply@barbearia-cheres-ab0c0.firebaseapp.com. Se não chegar em alguns minutos, procure em Spam ou Lixo eletrônico e, no Gmail, também nas abas Promoções e Atualizações.';
+        let adminsMap = {};
+        let invitesMap = {};
+        let ownerUid = null;
+
+        function startAdminsData() {
+            db.ref('owner').on('value', s => { ownerUid = s.val(); renderAdmins(); }, sessionLost);
+            db.ref('admins').on('value', s => { adminsMap = s.val() || {}; renderAdmins(); }, sessionLost);
+            db.ref('adminInvites').on('value', s => { invitesMap = s.val() || {}; renderAdmins(); }, sessionLost);
+        }
+
+        function renderAdmins() {
+            const box = document.getElementById('adminsList');
+            if (!box) return;
+            const me = auth.currentUser && auth.currentUser.uid;
+            const row = (label, badge, action) => `
+                <div class="flex items-center justify-between gap-3 bg-zinc-800/60 border border-zinc-700 rounded-xl px-4 py-3">
+                    <div class="min-w-0">
+                        <p class="text-sm text-white truncate">${escapeHtml(label)}</p>
+                        <p class="text-xs text-zinc-400">${badge}</p>
+                    </div>
+                    ${action}
+                </div>`;
+            const admins = Object.entries(adminsMap).map(([uid, email]) => {
+                const isOwner = uid === ownerUid;
+                const badge = isOwner ? 'Dono' : uid === me ? 'Você' : 'Administrador';
+                const action = isOwner || uid === me ? '' :
+                    `<button data-uid="${escapeHtml(uid)}" onclick="removeAdmin(this.dataset.uid)" class="text-red-400 hover:text-red-300 text-xs font-medium whitespace-nowrap"><i class="fa-solid fa-user-minus mr-1"></i>Remover</button>`;
+                return row(typeof email === 'string' && email.includes('@') ? email : '(e-mail não registrado)', badge, action);
+            });
+            const invites = Object.entries(invitesMap).map(([key, inv]) => row(inv.email, 'Convite pendente',
+                `<button data-key="${escapeHtml(key)}" onclick="cancelInvite(this.dataset.key)" class="text-zinc-400 hover:text-white text-xs font-medium whitespace-nowrap"><i class="fa-solid fa-xmark mr-1"></i>Cancelar</button>`));
+            box.innerHTML = admins.concat(invites).join('');
+        }
+
+        async function inviteAdmin() {
+            const input = document.getElementById('inviteEmail');
+            const email = input.value.trim().toLowerCase();
+            if (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(email)) { alert('❌ Informe um e-mail válido.'); return; }
+            if (Object.values(adminsMap).includes(email)) { alert('Este e-mail já é administrador.'); return; }
+            try {
+                await db.ref('adminInvites/' + inviteKey(email)).set({
+                    email, invitedBy: auth.currentUser.email || '', invitedAt: new Date().toISOString()
+                });
+                input.value = '';
+                alert(`✅ Convite criado para ${email}.\n\nAvise a pessoa para abrir ${window.location.origin}/admin, tocar em "Primeiro acesso", criar a senha e confirmar o e-mail.\n\nSe aparecer "este e-mail já tem conta" ou "senha incorreta", ela não deve clicar em links recebidos: deve usar "Esqueci minha senha". Depois que ela entrar, confira aqui a lista de administradores.`);
+            } catch (err) {
+                alert('❌ Não foi possível criar o convite: ' + err.message);
+            }
+        }
+
+        function cancelInvite(key) {
+            if (!confirm('Cancelar este convite?')) return;
+            db.ref('adminInvites/' + key).remove().catch(err => alert('❌ ' + err.message));
+        }
+
+        function removeAdmin(uid) {
+            const email = adminsMap[uid];
+            if (!confirm(`Remover o acesso de ${email} ao painel?`)) return;
+            // Apaga também um convite que tenha sobrado, para a pessoa não conseguir voltar sozinha.
+            const updates = { ['admins/' + uid]: null };
+            if (typeof email === 'string' && email.includes('@')) updates['adminInvites/' + inviteKey(email)] = null;
+            db.ref().update(updates).catch(err => alert('❌ Não foi possível remover: ' + err.message));
         }
 
         let sessionLostShown = false;

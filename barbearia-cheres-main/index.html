@@ -206,6 +206,7 @@
                 <h3 id="bookingGateTitle" class="text-2xl font-bold mb-2">Entre na sua conta para agendar</h3>
                 <p id="bookingGateText" class="text-zinc-400 mb-6">Para marcar um horário você precisa ter cadastro. É rápido e você ainda pode ver e cancelar seus agendamentos depois.</p>
                 <button type="button" id="bookingGateBtn" onclick="bookingGateClick()" class="bg-amber-500 hover:bg-amber-400 text-black px-8 py-4 rounded-2xl font-bold text-lg transition">ENTRAR / CRIAR CONTA</button>
+                <button type="button" id="bookingGateResend" onclick="resendVerification()" class="hidden block mx-auto mt-4 text-sm text-amber-500 hover:text-amber-400 underline">Não recebi o e-mail, enviar de novo</button>
             </div>
 
             <div id="bookingBox" class="bg-zinc-950 border border-amber-600/30 rounded-3xl p-8 shadow-2xl">
@@ -668,6 +669,7 @@
                 openAccountModal('client');
                 return;
             }
+            if (!requireVerified()) return;
             name = currentClient.name;
             phone = formatPhone(currentClient.phoneKey);
             const key = slotKey(date, time);
@@ -812,14 +814,71 @@
             const gate = document.getElementById('bookingGate');
             const box = document.getElementById('bookingBox');
             if (!gate || !box) return;
-            const ok = !!currentClient;
+            const ok = !!currentClient && currentClient.verified;
+            const needsVerify = !!currentClient && !currentClient.verified;
             gate.classList.toggle('hidden', ok);
             box.classList.toggle('hidden', !ok);
+            document.getElementById('bookingGateTitle').textContent = needsVerify ? 'Confirme seu e-mail para agendar' : 'Entre na sua conta para agendar';
+            document.getElementById('bookingGateText').textContent = needsVerify
+                ? `Confirme seu e-mail pelo link enviado para ${currentClient.email} e depois volte aqui. Se não encontrar, toque em "enviar de novo". ${EMAIL_HINT}`
+                : 'Para marcar um horário você precisa ter cadastro. É rápido e você ainda pode ver e cancelar seus agendamentos depois.';
+            document.getElementById('bookingGateBtn').textContent = needsVerify ? 'JÁ CONFIRMEI' : 'ENTRAR / CRIAR CONTA';
+            document.getElementById('bookingGateResend').classList.toggle('hidden', !needsVerify);
             if (ok) prefillClientForm();
         }
 
         function bookingGateClick() {
-            openAccountModal('client');
+            if (currentClient && !currentClient.verified) checkVerification();
+            else openAccountModal('client');
+        }
+
+        // ============ CONFIRMAÇÃO DE E-MAIL ============
+        // Onde o e-mail do Firebase costuma aparecer (remetente padrão do projeto).
+        const EMAIL_HINT = 'O e-mail vem de noreply@barbearia-cheres-ab0c0.firebaseapp.com. Se não chegar em alguns minutos, procure em Spam ou Lixo eletrônico e, no Gmail, também nas abas Promoções e Atualizações.';
+        // Só agenda/remarca quem confirmou o e-mail (o banco também exige isso).
+        async function sendVerification() {
+            const user = auth.currentUser;
+            if (!user) return;
+            try {
+                await user.sendEmailVerification({ url: window.location.origin + '/' });
+            } catch (e) {
+                if (e.code === 'auth/unauthorized-continue-uri' || e.code === 'auth/invalid-continue-uri') await user.sendEmailVerification();
+                else throw e;
+            }
+        }
+
+        async function resendVerification() {
+            try {
+                await sendVerification();
+                alert(`📧 Enviamos um novo link para ${currentClient.email}.\n\n${EMAIL_HINT}`);
+            } catch (err) {
+                alert('Não foi possível enviar agora: ' + authErrorMessage(err));
+            }
+        }
+
+        async function checkVerification() {
+            const user = auth.currentUser;
+            if (!user || !currentClient) return;
+            try {
+                await user.reload();
+                if (!user.emailVerified) {
+                    alert('Ainda não recebemos a confirmação. Abra o e-mail que enviamos e toque no link. Se não encontrar, toque em "enviar de novo".');
+                    return;
+                }
+                await user.getIdToken(true);   // atualiza o token para o banco enxergar a confirmação
+                currentClient.verified = true;
+                updateAccountUI();
+                alert('✅ E-mail confirmado! Agora você já pode agendar.');
+            } catch (err) {
+                alert(authErrorMessage(err));
+            }
+        }
+
+        function requireVerified() {
+            if (currentClient && currentClient.verified) return true;
+            alert('📧 Confirme seu e-mail antes de agendar ou remarcar. Enviamos um link para ' + (currentClient ? currentClient.email : 'o seu e-mail') + '.');
+            showSection('client');
+            return false;
         }
 
         function authErrorMessage(err) {
@@ -840,8 +899,18 @@
             alert('❌ E-mail/telefone ou senha incorretos.');
         }
 
-        function setCurrentClient(phoneKey, data, uid) {
-            currentClient = { phoneKey, name: data.name, email: data.email || '', since: data.createdAt || '', uid };
+        // Clientes cadastrados antes da confirmação de e-mail ficam liberados (lista gravada só pelo Firebase CLI).
+        async function isVerifiedExempt(uid) {
+            try {
+                return (await db.ref('verifiedExempt/' + uid).once('value')).exists();
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setCurrentClient(phoneKey, data, uid, exempt = false) {
+            const verified = exempt || !!(auth.currentUser && auth.currentUser.uid === uid && auth.currentUser.emailVerified);
+            currentClient = { phoneKey, name: data.name, email: data.email || '', since: data.createdAt || '', uid, verified };
             updateAccountUI();
         }
 
@@ -881,6 +950,7 @@
                     throw e;
                 }
                 document.getElementById('accRegPin').value = '';
+                await sendVerification().catch(() => {});
                 setCurrentClient(phoneKey, record, cred.user.uid);
                 goAfterLogin();
             } catch (err) {
@@ -925,7 +995,9 @@
                 }
                 loginFails = 0;
                 document.getElementById('accLoginPin').value = '';
-                setCurrentClient(rec.phoneKey, rec.data, user.uid);
+                const exempt = await isVerifiedExempt(user.uid);
+                if (!user.emailVerified && !exempt) await sendVerification().catch(() => {});
+                setCurrentClient(rec.phoneKey, rec.data, user.uid, exempt);
                 goAfterLogin();
             } catch (err) {
                 alert(authErrorMessage(err));
@@ -953,7 +1025,7 @@
             try {
                 await sendResetEmail(email);
                 // mesma resposta exista a conta ou não, para não revelar quem é cliente
-                alert('Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha. Confira também a caixa de spam.');
+                alert('Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha.\n\n' + EMAIL_HINT);
                 document.getElementById('accForgotId').value = '';
                 switchAccountTab('login');
             } catch (err) {
@@ -1099,6 +1171,7 @@
             const a = rescheduleTarget;
             if (!a || !currentClient) return;
             if (date === a.date && time === a.time) { alert('Escolha um horário diferente do atual.'); return; }
+            if (!requireVerified()) { closeRescheduleModal(); return; }
             if (!confirm(`Remarcar ${a.service} para ${formatBR(date)} às ${time}?`)) return;
 
             const newRef = bookedSlotsRef.child(slotKey(date, time));
@@ -1196,9 +1269,12 @@
                 return;
             }
             try {
+                // Quem acabou de clicar no link de confirmação volta já liberado para agendar.
+                await user.reload().catch(() => {});
+                if (user.emailVerified && !(await user.getIdTokenResult().catch(() => ({ claims: {} }))).claims.email_verified) await user.getIdToken(true).catch(() => {});
                 const rec = await findClientByUid(user.uid);
                 if (authBusy) return;
-                if (rec) setCurrentClient(rec.phoneKey, rec.data, user.uid);
+                if (rec) setCurrentClient(rec.phoneKey, rec.data, user.uid, await isVerifiedExempt(user.uid));
                 // O login é compartilhado com o painel: não desloga o barbeiro só porque ele abriu o site.
                 else if (!(await db.ref('admins/' + user.uid).once('value').catch(() => null))?.exists()) auth.signOut().catch(() => {});
             } catch (e) {}

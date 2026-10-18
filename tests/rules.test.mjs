@@ -7,7 +7,7 @@ import { equalTo, get, orderByChild, push, query, ref, remove, runTransaction, s
 
 const ALICE = { uid: 'uid-alice', phone: '21911111111' };
 const BOB = { uid: 'uid-bob', phone: '21922222222' };
-const SETUP_CODE = 'codigo-de-teste-123';
+const ANDRE = { uid: 'uid-andre', email: 'andre.cheres13@gmail.com' };
 
 let env;
 const db = (uid, token) => (uid ? env.authenticatedContext(uid, token) : env.unauthenticatedContext()).database();
@@ -26,7 +26,9 @@ after(() => env.cleanup());
 beforeEach(async () => {
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database()), {
-        adminSetupCode: SETUP_CODE,
+        owner: ANDRE.uid,
+        admins: { [ANDRE.uid]: ANDRE.email },
+        adminInvites: { 'novo@x,com': { email: 'novo@x.com', invitedBy: ANDRE.email } },
         clients: {
             [ALICE.phone]: { name: 'Alice', email: 'alice@x.com', uid: ALICE.uid },
             [BOB.phone]: { name: 'Bob', email: 'bob@x.com', uid: BOB.uid }
@@ -56,12 +58,12 @@ describe('visitante (sem login)', () => {
         await assertFails(set(ref(db(), 'bookedSlots/2026-10-23_0900'), true));
         await assertFails(push(ref(db(), 'appointments'), appt(ALICE)));
         await assertFails(remove(ref(db(), 'appointments/a1')));
-        await assertFails(set(ref(db(), 'admins/x'), SETUP_CODE));
+        await assertFails(set(ref(db(), 'admins/x'), 'x@x.com'));
     });
 });
 
 describe('cliente logado', () => {
-    const alice = () => db(ALICE.uid);
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
 
     test('encontra o próprio cadastro pelo uid, mas não o de outros', async () => {
         await assertSucceeds(get(query(ref(alice(), 'clients'), orderByChild('uid'), equalTo(ALICE.uid))));
@@ -110,7 +112,7 @@ describe('cliente logado', () => {
     test('disputa pelo mesmo horário: só um cliente consegue (transaction)', async () => {
         const slot = '2026-10-23_1000';
         const tryBook = (ctx, uid) => runTransaction(ref(ctx, `bookedSlots/${slot}`), cur => (cur ? undefined : uid));
-        const [r1, r2] = await Promise.allSettled([tryBook(alice(), ALICE.uid), tryBook(db(BOB.uid), BOB.uid)]);
+        const [r1, r2] = await Promise.allSettled([tryBook(alice(), ALICE.uid), tryBook(db(BOB.uid, { email: 'bob@x.com', email_verified: true }), BOB.uid)]);
         const won = [r1, r2].filter(r => r.status === 'fulfilled' && r.value.committed).length;
         if (won !== 1) throw new Error(`esperado 1 vencedor, houve ${won}`);
     });
@@ -137,40 +139,102 @@ describe('cliente logado', () => {
         await assertFails(set(ref(alice(), 'appointmentHistory/h2'), appt(ALICE)));
         await assertFails(set(ref(alice(), 'blockedDates/d2'), '2026-12-31'));
     });
-    test('não vira admin nem lê o código de ativação', async () => {
-        await assertFails(get(ref(alice(), 'adminSetupCode')));
-        await assertFails(set(ref(alice(), `admins/${ALICE.uid}`), 'chute'));
-        await assertFails(set(ref(alice(), `admins/${BOB.uid}`), SETUP_CODE));
+    test('sem e-mail confirmado: não agenda nem remarca, mas cancela', async () => {
+        const naoConfirmada = db(ALICE.uid, { email: 'alice@x.com', email_verified: false });
+        await assertFails(set(ref(naoConfirmada, 'bookedSlots/2026-10-23_0900'), ALICE.uid));
+        await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database(), 'bookedSlots/2026-10-23_1400'), ALICE.uid));
+        await assertFails(update(ref(naoConfirmada, 'appointments/a1'), { date: '2026-10-23', time: '14:00' }));
+        await assertSucceeds(remove(ref(naoConfirmada, 'appointments/a1')));
+        await assertSucceeds(remove(ref(naoConfirmada, 'bookedSlots/2026-10-21_1000')));
+    });
+    test('cliente antigo (verifiedExempt) agenda sem confirmar o e-mail', async () => {
+        await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database(), `verifiedExempt/${ALICE.uid}`), true));
+        const antiga = db(ALICE.uid, { email: 'alice@x.com', email_verified: false });
+        await assertSucceeds(get(ref(antiga, `verifiedExempt/${ALICE.uid}`)));
+        await assertSucceeds(set(ref(antiga, 'bookedSlots/2026-10-23_0900'), ALICE.uid));
+        await assertSucceeds(push(ref(antiga, 'appointments'), appt(ALICE, '2026-10-23', '09:00')));
+    });
+    test('cliente não se coloca na lista de liberados nem lê a de outros', async () => {
+        const nova = db('uid-carol', { email: 'c@x.com', email_verified: false });
+        await assertFails(set(ref(nova, 'verifiedExempt/uid-carol'), true));
+        await assertFails(get(ref(nova, `verifiedExempt/${ALICE.uid}`)));
+        await assertFails(get(ref(nova, 'verifiedExempt')));
+    });
+    test('não vira admin sem convite nem lê dados de admin', async () => {
+        await assertFails(set(ref(alice(), `admins/${ALICE.uid}`), 'alice@x.com'));
+        await assertFails(get(ref(alice(), 'admins')));
+        await assertFails(get(ref(alice(), 'adminInvites')));
+        await assertFails(set(ref(alice(), 'adminInvites/alice@x,com'), { email: 'alice@x.com', invitedBy: 'alice@x.com' }));
     });
 });
 
-describe('ativação e acesso do admin', () => {
-    const andre = () => db('uid-andre', { email: 'andre.cheres13@gmail.com' });
+describe('administradores e convites', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const novo = (verified = true, uid = 'uid-novo') => db(uid, { email: 'novo@x.com', email_verified: verified });
 
-    test('código certo com outro e-mail não vira admin', async () => {
-        await assertFails(set(ref(db('uid-intruso', { email: 'intruso@x.com' }), 'admins/uid-intruso'), SETUP_CODE));
-        await assertFails(set(ref(db('uid-intruso'), 'admins/uid-intruso'), SETUP_CODE));
-    });
-    test('e-mail do André com código errado não vira admin', async () => {
-        await assertFails(set(ref(andre(), 'admins/uid-andre'), 'chute'));
-    });
-    test('primeiro acesso com o código certo vira admin e apaga o código', async () => {
-        await assertSucceeds(set(ref(andre(), 'admins/uid-andre'), SETUP_CODE));
-        await assertSucceeds(get(ref(andre(), 'admins/uid-andre')));
-        await assertSucceeds(remove(ref(andre(), 'adminSetupCode')));
-    });
-    test('depois do primeiro admin, o código não serve para mais ninguém', async () => {
-        await assertSucceeds(set(ref(andre(), 'admins/uid-andre'), SETUP_CODE));
-        await assertFails(set(ref(db('uid-intruso', { email: 'andre.cheres13@gmail.com' }), 'admins/uid-intruso'), SETUP_CODE));
-    });
-    test('admin lê e altera tudo', async () => {
-        await assertSucceeds(set(ref(andre(), 'admins/uid-andre'), SETUP_CODE));
+    test('admin lê e altera os dados da barbearia', async () => {
         await assertSucceeds(get(ref(andre())));
         await assertSucceeds(get(ref(andre(), 'clients')));
         await assertSucceeds(set(ref(andre(), 'bookedSlots/2026-10-21_1100'), 'barber'));
         await assertSucceeds(remove(ref(andre(), 'appointments/b1')));
         await assertSucceeds(set(ref(andre(), 'appointmentHistory/h2'), appt(BOB)));
         await assertSucceeds(set(ref(andre(), 'contacts/21944444444'), { name: 'Dan' }));
+        await assertSucceeds(set(ref(andre(), 'blockedDates/d2'), '2026-12-31'));
         await assertSucceeds(update(ref(andre()), { 'appointments/a1/phoneKey': ALICE.phone, 'bookedSlots/2026-10-21_1000': null }));
+    });
+    test('admin convida, lista e cancela convites', async () => {
+        await assertSucceeds(set(ref(andre(), 'adminInvites/outro@x,com'), { email: 'outro@x.com', invitedBy: ANDRE.email, invitedAt: 'x' }));
+        await assertSucceeds(get(ref(andre(), 'adminInvites')));
+        await assertSucceeds(get(ref(andre(), 'admins')));
+        await assertSucceeds(remove(ref(andre(), 'adminInvites/outro@x,com')));
+        await assertFails(set(ref(andre(), 'adminInvites/outro@x,com'), { email: 'diferente@x.com', invitedBy: ANDRE.email }));
+    });
+    test('convidado com e-mail confirmado vira admin e apaga o convite', async () => {
+        await assertSucceeds(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
+        await assertSucceeds(remove(ref(novo(), 'adminInvites/novo@x,com')));
+        await assertSucceeds(get(ref(novo(), 'clients')));
+    });
+    test('convidado sem confirmar o e-mail não vira admin', async () => {
+        await assertFails(set(ref(novo(false), 'admins/uid-novo'), 'novo@x.com'));
+    });
+    test('convite não serve para outro e-mail nem grava e-mail falso', async () => {
+        await assertFails(set(ref(db('uid-x', { email: 'x@x.com', email_verified: true }), 'admins/uid-x'), 'x@x.com'));
+        await assertFails(set(ref(novo(), 'admins/uid-novo'), 'andre.cheres13@gmail.com'));
+        await assertFails(set(ref(novo(), 'admins/uid-outro'), 'novo@x.com'));
+    });
+    test('ninguém remove o dono; admin remove outros admins', async () => {
+        await assertSucceeds(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
+        await assertFails(remove(ref(novo(), `admins/${ANDRE.uid}`)));
+        await assertFails(set(ref(novo(), 'owner'), 'uid-novo'));
+        await assertFails(remove(ref(andre(), `admins/${ANDRE.uid}`)));
+        await assertSucceeds(remove(ref(andre(), 'admins/uid-novo')));
+    });
+    test('admin não cria admin direto (só por convite)', async () => {
+        await assertFails(set(ref(andre(), 'admins/uid-qualquer'), 'qualquer@x.com'));
+    });
+});
+
+describe('correções da revisão', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const novo = () => db('uid-novo', { email: 'novo@x.com', email_verified: true });
+
+    test('sem "owner" gravado, nenhum admin é removido', async () => {
+        await assertSucceeds(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
+        await env.withSecurityRulesDisabled(ctx => remove(ref(ctx.database(), 'owner')));
+        await assertFails(remove(ref(novo(), `admins/${ANDRE.uid}`)));
+    });
+    test('chave de convite com caracteres de código é recusada', async () => {
+        const key = "x');alert(1);('";
+        await assertFails(set(ref(andre(), `adminInvites/${key}`), { email: key, invitedBy: ANDRE.email }));
+    });
+    test('convidado vê só o próprio convite', async () => {
+        await assertSucceeds(get(ref(novo(), 'adminInvites/novo@x,com')));
+        await assertFails(get(ref(novo(), 'adminInvites/outro@x,com')));
+        await assertFails(get(ref(db('uid-x', { email: 'x@x.com' }), 'adminInvites/novo@x,com')));
+    });
+    test('remover admin apaga junto o convite que sobrou', async () => {
+        await assertSucceeds(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
+        await assertSucceeds(update(ref(andre()), { 'admins/uid-novo': null, 'adminInvites/novo@x,com': null }));
+        await assertFails(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
     });
 });
