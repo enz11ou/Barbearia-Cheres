@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Área do Barbeiro • Cheres</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#27272a">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Cheres">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -14,6 +22,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="schedule.js"></script>
+    <script src="attendance.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -162,41 +171,79 @@
     <!-- ADMIN DASHBOARD -->
     <div id="adminDashboard" class="hidden bg-zinc-950 min-h-screen">
         <div class="bg-zinc-800 border-b border-amber-500 sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between">
-                <div>
-                    <h1 class="logo-font text-3xl text-amber-500">DASHBOARD BARBEIRO</h1>
-                    <p class="text-zinc-400 text-sm mt-1">Gerencie seus agendamentos e visualize analytics</p>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-6 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <h1 class="logo-font text-2xl sm:text-3xl text-amber-500 truncate">DASHBOARD BARBEIRO</h1>
+                    <p class="hidden sm:block text-zinc-400 text-sm mt-1">Gerencie seus agendamentos e visualize analytics</p>
                 </div>
-                <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-semibold transition flex items-center gap-2">
-                    <i class="fa-solid fa-sign-out"></i> Sair
-                </button>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="alertsBtn" onclick="enableAlerts()" class="bg-zinc-700 hover:bg-zinc-600 text-white w-11 h-11 sm:w-auto sm:px-4 sm:h-12 rounded-2xl font-semibold transition flex items-center justify-center gap-2" aria-label="Ativar avisos de novos agendamentos">
+                        <i class="fa-solid fa-bell-slash" id="alertsIcon"></i><span class="hidden sm:inline" id="alertsText">Ativar avisos</span>
+                    </button>
+                    <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-700 text-white w-11 h-11 sm:w-auto sm:px-6 sm:h-12 rounded-2xl font-semibold transition flex items-center justify-center gap-2" aria-label="Sair">
+                        <i class="fa-solid fa-sign-out"></i><span class="hidden sm:inline">Sair</span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-            <div class="flex gap-6 mb-8 border-b border-zinc-700 pb-4 overflow-x-auto">
-                <button onclick="switchDashboardTab('overview')" class="dashboard-tab active whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+            <div class="flex gap-1 sm:gap-6 mb-5 sm:mb-8 border-b border-zinc-700 pb-2 sm:pb-4 overflow-x-auto">
+                <button onclick="switchDashboardTab('today')" class="dashboard-tab active whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-sun"></i> Hoje
+                </button>
+                <button onclick="switchDashboardTab('overview')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-chart-line"></i> Visão Geral
                 </button>
-                <button onclick="switchDashboardTab('appointments')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                <button onclick="switchDashboardTab('appointments')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-calendar-check"></i> Agendamentos
                 </button>
-                <button onclick="switchDashboardTab('schedule')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                <button onclick="switchDashboardTab('schedule')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-clock"></i> Horários
                 </button>
-                <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-chart-pie"></i> Analytics
                 </button>
-                <button onclick="switchDashboardTab('crm')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                <button onclick="switchDashboardTab('crm')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-users"></i> CRM
                 </button>
-                <button onclick="switchDashboardTab('settings')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                <button onclick="switchDashboardTab('settings')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-cog"></i> Configurações
                 </button>
             </div>
 
+            <!-- TAB: HOJE (rotina do dia) -->
+            <div id="tab-today" class="dashboard-content">
+                <div id="dayPicker" class="flex gap-2 overflow-x-auto pb-2 mb-4" role="tablist" aria-label="Escolher dia"></div>
+
+                <div id="pendingBox" class="hidden bg-zinc-900 border border-amber-700/60 rounded-2xl p-4 sm:p-5 mb-5">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="font-bold text-amber-400"><i class="fa-solid fa-circle-question mr-2"></i>Pendentes de confirmação <span id="pendingCount" class="ml-1 bg-amber-500 text-black text-xs px-2 py-0.5 rounded-full"></span></h3>
+                    </div>
+                    <p class="text-xs text-zinc-400 mb-3">Horários que já passaram e ainda não foram marcados. Marque se o cliente veio e como pagou.</p>
+                    <div id="pendingList" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 mb-5">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+                        <h3 id="dayTitle" class="text-xl font-bold text-amber-500"></h3>
+                        <p id="daySummary" class="text-sm text-zinc-400"></p>
+                    </div>
+                    <p id="dayNote" class="text-sm text-red-400 mb-2"></p>
+                    <div id="dayTimeline" class="space-y-2 mt-3"></div>
+                </div>
+
+                <div id="reminderBox" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                        <h3 class="text-xl font-bold text-amber-500"><i class="fa-brands fa-whatsapp mr-2"></i>Lembrete de amanhã</h3>
+                        <p id="reminderSummary" class="text-sm text-zinc-400"></p>
+                    </div>
+                    <div id="reminderList" class="space-y-2"></div>
+                </div>
+            </div>
+
             <!-- TAB: OVERVIEW -->
-            <div id="tab-overview" class="dashboard-content">
+            <div id="tab-overview" class="dashboard-content hidden">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="stat-card p-6 rounded-2xl">
                         <div class="flex items-center justify-between">
@@ -573,6 +620,65 @@
         </div>
     </div>
 
+    <!-- AVISOS NA TELA (novo agendamento, remarcação, cancelamento) -->
+    <div id="toastArea" class="fixed top-3 right-3 left-3 sm:left-auto sm:w-96 z-[60] space-y-2 pointer-events-none" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- MARCAR ATENDIDO -->
+    <div id="attendModal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="atTitle" onclick="if (event.target === this) closeAttendModal()">
+        <form onsubmit="event.preventDefault(); saveAttended();" class="bg-zinc-900 border border-zinc-700 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div class="min-w-0">
+                    <h3 id="atTitle" class="text-xl font-bold text-emerald-400">Cliente atendido</h3>
+                    <p id="atInfo" class="text-sm text-zinc-400 mt-1"></p>
+                </div>
+                <button type="button" onclick="closeAttendModal()" class="text-zinc-400 hover:text-white text-2xl leading-none p-1" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <fieldset class="mb-4">
+                <legend class="text-sm font-semibold mb-2">Forma de pagamento</legend>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="pay-opt"><input type="radio" name="atMethod" value="pix" class="sr-only peer" checked><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-brands fa-pix mr-1"></i>Pix</span></label>
+                    <label class="pay-opt"><input type="radio" name="atMethod" value="cash" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-money-bill mr-1"></i>Dinheiro</span></label>
+                    <label class="pay-opt"><input type="radio" name="atMethod" value="card" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-credit-card mr-1"></i>Cartão</span></label>
+                </div>
+            </fieldset>
+            <label for="atAmount" class="block text-sm font-semibold mb-2">Valor recebido (R$)</label>
+            <input type="text" id="atAmount" inputmode="decimal" autocomplete="off" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-amber-500">
+            <p id="atPriceHint" class="text-xs text-zinc-500 mt-1"></p>
+            <div class="grid grid-cols-2 gap-3 mt-5">
+                <button type="button" onclick="closeAttendModal()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-3 rounded-xl font-semibold transition">Cancelar</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-bold transition"><i class="fa-solid fa-check mr-1"></i>Confirmar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- REMARCAR PELO PAINEL -->
+    <div id="moveModal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="mvTitle" onclick="if (event.target === this) closeMoveModal()">
+        <form onsubmit="event.preventDefault(); saveMove();" class="bg-zinc-900 border border-zinc-700 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div class="min-w-0">
+                    <h3 id="mvTitle" class="text-xl font-bold text-amber-500">Remarcar</h3>
+                    <p id="mvInfo" class="text-sm text-zinc-400 mt-1"></p>
+                </div>
+                <button type="button" onclick="closeMoveModal()" class="text-zinc-400 hover:text-white text-2xl leading-none p-1" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="grid grid-cols-1 gap-3">
+                <div>
+                    <label for="mvDate" class="block text-xs text-zinc-400 mb-1">Nova data</label>
+                    <input type="date" id="mvDate" required onchange="refreshMoveSlots()" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label for="mvTime" class="block text-xs text-zinc-400 mb-1">Novo horário</label>
+                    <select id="mvTime" required class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500"></select>
+                    <p id="mvNote" class="text-sm text-amber-400 mt-1"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mt-5">
+                <button type="button" onclick="closeMoveModal()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-3 rounded-xl font-semibold transition">Cancelar</button>
+                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-3 rounded-xl font-bold transition">Remarcar</button>
+            </div>
+        </form>
+    </div>
+
     <!-- EDITOR DE HORÁRIOS (dia da semana ou data) -->
     <div id="scheduleEditor" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="seTitle" onclick="if (event.target === this) closeScheduleEditor()">
         <div class="bg-zinc-900 border border-zinc-700 w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
@@ -710,8 +816,10 @@
             const today = localToday();   // data local: em UTC, depois das 21h o dia de hoje já contaria como passado
             appointments.forEach(app => {
                 if (app.date < today && app.key) {
+                    // Vai para o histórico como "pendente de confirmação", a menos que o barbeiro já
+                    // tenha marcado Atendido/Faltou. Nada vira "concluído" sozinho.
                     historyRef.child(app.key).set({
-                        ...app, phoneKey: normalizePhone(app.phone), status: 'completed',
+                        ...app, phoneKey: normalizePhone(app.phone), status: app.attendance || 'pending',
                         completedDate: new Date().toISOString()
                     });
                     appointmentsRef.child(app.key).remove();
@@ -784,6 +892,8 @@
                 renderAdminAppointments();
                 updateAllCharts();
                 updateCRMTable();
+                watchAppointmentChanges();
+                renderToday();
                 cleanupPastAppointments();
             }, sessionLost);
 
@@ -794,6 +904,7 @@
                 });
                 updateAllCharts();
                 updateCRMTable();
+                renderToday();
             }, sessionLost);
 
             blockedDatesRef.on('value', snapshot => {
@@ -802,6 +913,7 @@
                     blockedDates.push({ key: child.key, date: child.val() });
                 });
                 renderBlockedDates();
+                renderToday();
             }, sessionLost);
 
             blockedTimeSlotsRef.on('value', snapshot => {
@@ -811,6 +923,7 @@
                 });
                 renderBlockedTimeSlots();
                 refreshBlockTimeOptions();
+                renderToday();
             }, sessionLost);
 
             scheduleRef.on('value', snapshot => {
@@ -838,6 +951,7 @@
             cancelledRef.on('value', snapshot => {
                 cancelledList = [];
                 snapshot.forEach(child => { cancelledList.push({ key: child.key, ...child.val() }); });
+                watchCancellations();
                 updateCRMTable();
             }, sessionLost);
         }
@@ -849,6 +963,7 @@
             document.getElementById('tab-' + tab).classList.remove('hidden');
             const btn = document.querySelector(`.dashboard-tab[onclick="switchDashboardTab('${tab}')"]`);
             if (btn) btn.classList.add('active');
+            if (tab === 'today') renderToday();
             setTimeout(() => {
                 if (tab === 'analytics') {
                     [weekChart, monthChart, serviceDistributionChart, hourlyChart].forEach(c => c && c.resize());
@@ -1066,7 +1181,7 @@
             const ensure = pk => dir[pk] || (dir[pk] = {
                 phoneKey: pk, name: '', phone: formatPhone(pk), email: '', since: '',
                 hasAccount: false, manual: false,
-                completed: [], upcoming: [], cancelled: [],
+                completed: [], upcoming: [], cancelled: [], pending: [], noshows: [],
                 services: {}, visits: 0, totalSpent: 0, lastVisit: null, nextAppointment: null, nextTime: ''
             });
 
@@ -1085,25 +1200,34 @@
                 if (!e.since) e.since = c.createdAt || '';
             });
 
-            const place = (list, decide) => list.forEach(a => {
+            // "completed" = atendidos (marcados como Atendido, ou do histórico antigo). Pendentes e faltas ficam à parte.
+            const buckets = { attended: 'completed', upcoming: 'upcoming', pending: 'pending', noshow: 'noshows', cancelled: 'cancelled' };
+            const place = (list, node) => list.forEach(a => {
                 const pk = normalizePhone(a.phone);
                 if (!pk || !a.date) return;
                 const e = ensure(pk);
                 if (a.name && !firstName[pk]) firstName[pk] = a.name;
-                const entry = { date: a.date, time: a.time || '', service: a.service, by: a.cancelledBy || '' };
-                const bucket = decide(a);
-                bucket === 'completed' ? e.completed.push(entry) : bucket === 'upcoming' ? e.upcoming.push(entry) : e.cancelled.push(entry);
+                const outcome = node === 'cancelled' ? 'cancelled' : CheresAttendance.outcome(a, isTimePast, node === 'appointmentHistory');
+                const entry = {
+                    date: a.date, time: a.time || '', service: a.service, by: a.cancelledBy || '',
+                    outcome, key: a.key, node,
+                    paid: CheresAttendance.paidValue(a, servicePrices, outcome), method: CheresAttendance.methodLabel(a)
+                };
+                e[buckets[outcome]].push(entry);
             });
-            place(appointments, a => (isTimePast(a.date, a.time || '00:00') ? 'completed' : 'upcoming'));
-            place(appointmentHistory, () => 'completed');
-            place(cancelledList, () => 'cancelled');
+            place(appointments, 'appointments');
+            place(appointmentHistory, 'appointmentHistory');
+            place(cancelledList, 'cancelled');
 
             return Object.values(dir).map(e => {
                 if (!e.name) e.name = firstName[e.phoneKey] || e.phone;
-                [...e.completed, ...e.upcoming].forEach(x => { e.services[x.service] = (e.services[x.service] || 0) + 1; });
-                e.visits = e.completed.length;
-                e.totalSpent = e.completed.reduce((s, x) => s + (servicePrices[x.service] || 0), 0);
-                e.lastVisit = e.completed.length ? e.completed.map(x => x.date).sort().pop() : null;
+                [...e.completed, ...e.pending, ...e.upcoming].forEach(x => { e.services[x.service] = (e.services[x.service] || 0) + 1; });
+                e.visits = e.completed.length;                                   // só atendidos
+                e.noShows = e.noshows.length;
+                e.totalSpent = e.completed.reduce((s, x) => s + x.paid, 0);       // valor pago de fato
+                // Para "tempo sem vir", o pendente (provavelmente veio, só falta marcar) também conta.
+                const seen = [...e.completed, ...e.pending].map(x => x.date).sort();
+                e.lastVisit = seen.length ? seen.pop() : null;
                 const next = [...e.upcoming].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
                 e.nextAppointment = next ? next.date : null;
                 e.nextTime = next ? next.time : '';
@@ -1319,12 +1443,16 @@
             document.getElementById('crmDetailName').textContent = `${client.name} — Ficha do cliente`;
 
             const statusBadge = {
-                completed: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700">Concluído</span>',
+                completed: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700">Atendido</span>',
+                pending: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-900/40 text-amber-300 border border-amber-700">Pendente</span>',
+                noshow: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-600">Faltou</span>',
                 upcoming: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-900/40 text-amber-300 border border-amber-700">Agendado</span>',
                 cancelled: '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-900/50 text-red-300 border border-red-800">Cancelado</span>'
             };
             const all = [
                 ...client.completed.map(x => ({ ...x, status: 'completed' })),
+                ...client.pending.map(x => ({ ...x, status: 'pending' })),
+                ...client.noshows.map(x => ({ ...x, status: 'noshow' })),
                 ...client.upcoming.map(x => ({ ...x, status: 'upcoming' })),
                 ...client.cancelled.map(x => ({ ...x, status: 'cancelled' }))
             ].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
@@ -1333,8 +1461,8 @@
                     <td class="py-2 px-4 text-zinc-300 whitespace-nowrap">${formatDateBR(d.date)}</td>
                     <td class="py-2 px-4 text-zinc-300">${escapeHtml(d.time) || '—'}</td>
                     <td class="py-2 px-4 text-amber-400">${escapeHtml(d.service)}</td>
-                    <td class="py-2 px-4">${statusBadge[d.status]}${d.status === 'cancelled' && d.by ? `<span class="text-xs text-zinc-500 ml-2">${d.by === 'barber' ? 'pelo barbeiro' : 'pelo cliente'}</span>` : ''}</td>
-                    <td class="py-2 px-4 text-emerald-400 text-right">${d.status === 'completed' ? money(servicePrices[d.service] || 0) : '—'}</td>
+                    <td class="py-2 px-4 whitespace-nowrap">${statusBadge[d.status]}${d.status === 'cancelled' && d.by ? `<span class="text-xs text-zinc-500 ml-2">${d.by === 'barber' ? 'pelo barbeiro' : 'pelo cliente'}</span>` : ''}${d.status === 'completed' && d.method ? `<span class="text-xs text-zinc-500 ml-2">${escapeHtml(d.method)}</span>` : ''}</td>
+                    <td class="py-2 px-4 text-emerald-400 text-right">${d.status === 'completed' ? money(d.paid) : '—'}</td>
                 </tr>`).join('');
 
             detail.querySelector('#crmDetailContent').innerHTML = `
@@ -1350,8 +1478,9 @@
                     <div class="bg-zinc-900 p-3 rounded-xl"><p class="text-xs text-zinc-400">Cadastro</p>
                         <p><span class="${origin.color}">${origin.label}</span>${client.since ? ' • desde ' + formatDateBR(client.since.slice(0, 10)) : ''}</p></div>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Visitas concluídas</p><p class="text-2xl font-bold text-blue-400">${client.visits}</p></div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Visitas (atendido)</p><p class="text-2xl font-bold text-blue-400">${client.visits}</p></div>
+                    <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Faltas</p><p class="text-2xl font-bold ${client.noShows ? 'text-red-400' : 'text-zinc-300'}">${client.noShows}</p></div>
                     <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Total gasto</p><p class="text-2xl font-bold text-emerald-400">${money(client.totalSpent)}</p></div>
                     <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Próximo</p><p class="text-lg font-bold text-amber-400">${client.nextAppointment ? formatDateBR(client.nextAppointment) + ' ' + escapeHtml(client.nextTime) : '—'}</p></div>
                     <div class="bg-zinc-900 p-4 rounded-xl text-center"><p class="text-xs text-zinc-400 mb-1">Última visita</p><p class="text-lg font-bold text-zinc-300">${client.lastVisit ? formatDateBR(client.lastVisit) : '—'}</p></div>
@@ -1609,7 +1738,10 @@
                     </div>
                     <div class="text-right flex flex-col justify-between min-w-[120px]">
                         <p class="text-emerald-400 font-bold text-xl">${money(price)}</p>
-                        ${!isPast ? `<button onclick="cancelAppointment('${escapeHtml(app.key)}')" class="mt-4 text-red-400 hover:text-red-500 text-sm font-medium transition">Cancelar</button>` : '<p class="text-zinc-500 text-sm mt-4">—</p>'}
+                        ${!isPast ? `<div class="mt-4 flex sm:flex-col gap-3 sm:gap-2 sm:items-end">
+                            <button onclick="openMoveModal('${escapeHtml(app.key)}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium transition"><i class="fa-solid fa-calendar-days mr-1"></i>Remarcar</button>
+                            <button onclick="cancelAppointment('${escapeHtml(app.key)}')" class="text-red-400 hover:text-red-500 text-sm font-medium transition">Cancelar</button>
+                        </div>` : '<p class="text-zinc-500 text-sm mt-4">—</p>'}
                     </div>`;
                 container.appendChild(div);
             });
@@ -1773,6 +1905,7 @@
                 [CheresSchedule.describeOpenDays(scheduleSettings), CheresSchedule.describeHours(scheduleSettings)].filter(Boolean).join(', ');
             refreshBlockTimeOptions();
             if (document.getElementById('naDate')) refreshNewAppSlots();
+            renderToday();
         }
 
         function renderWeekdayList() {
@@ -2092,9 +2225,603 @@
             }
         });
 
+        // ============ HOJE: ROTINA DO DIA ============
+        // Tudo que é digitado (nome, serviço) entra na tela via textContent ou escapeHtml.
+        let todaySelection = 'today';   // 'today', 'week' ou uma data AAAA-MM-DD
+
+        function addDaysISO(iso, n) {
+            const d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + n);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function addMinutes(time, m) {
+            const [h, mm] = time.split(':').map(Number);
+            const t = h * 60 + mm + m;
+            return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+        }
+        function hourText(time) {   // "14:30" -> "14h30", "14:00" -> "14h"
+            const [h, m] = String(time).split(':');
+            return `${Number(h)}h${m === '00' ? '' : m}`;
+        }
+        function firstNameOf(name) {
+            const n = String(name || '').trim().split(/\s+/)[0];
+            return n && !/^\(?\d/.test(n) ? n : '';
+        }
+        function phoneKeyOf(rec) { return normalizePhone(rec.phone || '') || rec.phoneKey || ''; }
+        function waLink(pk, text) { return `https://wa.me/55${pk}${text ? '?text=' + encodeURIComponent(text) : ''}`; }
+        function dayLabel(date) { return `${weekdayLabel(date)}, ${formatDateBR(date).slice(0, 5)}`; }
+        function selectedDate() { return todaySelection === 'today' ? localToday() : todaySelection; }
+
+        function pickDay(value) {
+            todaySelection = value;
+            renderToday();
+        }
+
+        function renderToday() {
+            if (!document.getElementById('dayTimeline') || !adminDataStarted) return;
+            renderDayPicker();
+            renderPending();
+            renderReminders();
+            if (todaySelection === 'week') renderWeek(); else renderDay(selectedDate());
+        }
+
+        function renderDayPicker() {
+            const box = document.getElementById('dayPicker');
+            const today = localToday();
+            const opts = [{ v: 'today', date: today, label: 'Hoje' }, { v: addDaysISO(today, 1), date: addDaysISO(today, 1), label: 'Amanhã' }];
+            for (let i = 2; i <= 6; i++) { const d = addDaysISO(today, i); opts.push({ v: d, date: d, label: dayLabel(d) }); }
+            opts.push({ v: 'week', label: 'Semana' });
+            box.innerHTML = '';
+            opts.forEach(o => {
+                const on = todaySelection === o.v || (o.v === 'today' && todaySelection === today);
+                const count = o.date ? appointments.filter(a => a.date === o.date).length : 0;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.setAttribute('role', 'tab');
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                btn.className = `shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition ${on ? 'bg-amber-500 text-black border-amber-500' : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-amber-500'}`;
+                btn.textContent = o.label;
+                if (count) {
+                    const b = document.createElement('span');
+                    b.className = `ml-2 text-xs px-1.5 py-0.5 rounded-full ${on ? 'bg-black/20' : 'bg-zinc-700'}`;
+                    b.textContent = count;
+                    btn.appendChild(b);
+                }
+                btn.onclick = () => pickDay(o.v);
+                box.appendChild(btn);
+            });
+        }
+
+        // Cartão de um agendamento (usado no dia, nos pendentes e na semana).
+        function appointmentCard(rec, node, opts = {}) {
+            const out = CheresAttendance.outcome(rec, isTimePast, node === 'appointmentHistory');
+            const pk = phoneKeyOf(rec);
+            const price = CheresAttendance.listPrice(rec, servicePrices);
+            const card = document.createElement('div');
+            card.className = `flex gap-3 p-3 sm:p-4 rounded-2xl border ${opts.highlight ? 'bg-amber-500/10 border-amber-500 ring-1 ring-amber-500/40' : 'bg-zinc-800 border-zinc-700'}`;
+
+            const chips = [];
+            if (opts.highlight) chips.push(`<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-black">${isTimePast(rec.date, rec.time) ? 'AGORA' : 'PRÓXIMO'}</span>`);
+            if (out === 'attended') chips.push(`<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300">Atendido${rec.payment ? ' · ' + escapeHtml(CheresAttendance.methodLabel(rec)) + ' · ' + money(CheresAttendance.paidValue(rec, servicePrices, out)) : ''}</span>`);
+            if (out === 'noshow') chips.push('<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-200">Faltou</span>');
+            if (out === 'pending') chips.push('<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300">Pendente</span>');
+            if (rec.rescheduledFrom) {
+                const was = rec.rescheduledFrom.split(' ');
+                chips.push(`<span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-400/15 text-blue-300">↻ Remarcado (era ${escapeHtml(formatDateBR(was[0]).slice(0, 5))} ${escapeHtml(was[1] || '')})</span>`);
+            }
+            if (rec.createdBy === 'barber') chips.push('<span class="text-[11px] px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300">Pelo barbeiro</span>');
+
+            card.innerHTML = `
+                <div class="w-14 shrink-0 text-center">
+                    <p class="text-lg font-bold text-amber-400 leading-tight">${escapeHtml(rec.time)}</p>
+                    ${opts.showDate ? `<p class="text-[11px] text-zinc-400">${escapeHtml(dayLabel(rec.date))}</p>` : ''}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-1.5 mb-1">${chips.join('')}</div>
+                    <p class="font-semibold text-white break-words">${escapeHtml(rec.name || 'Cliente')}</p>
+                    <p class="text-sm text-zinc-300">${escapeHtml(rec.service || '')} <span class="text-zinc-500">· ${money(price)}</span></p>
+                    ${pk ? `<p class="text-sm mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                        <a href="tel:+55${pk}" class="text-zinc-300 hover:text-white"><i class="fa-solid fa-phone mr-1 text-xs"></i>${escapeHtml(formatPhone(pk))}</a>
+                        <a href="${escapeHtml(waLink(pk))}" target="_blank" rel="noopener" class="text-green-400 hover:text-green-300"><i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp</a>
+                    </p>` : ''}
+                    <div class="card-actions flex flex-wrap gap-2 mt-3 empty:hidden"></div>
+                </div>`;
+
+            const actions = card.querySelector('.card-actions');
+            const add = (label, cls, fn, aria) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = `px-3 py-2 rounded-xl text-sm font-semibold transition ${cls}`;
+                b.innerHTML = label;
+                if (aria) b.setAttribute('aria-label', aria);
+                b.onclick = fn;
+                actions.appendChild(b);
+            };
+            const who = rec.name || 'cliente';
+            if (out === 'pending') {
+                add('<i class="fa-solid fa-check mr-1"></i>Atendido', 'bg-emerald-600 hover:bg-emerald-500 text-white', () => openAttendModal(node, rec), `Marcar ${who} como atendido`);
+                add('<i class="fa-solid fa-xmark mr-1"></i>Faltou', 'bg-zinc-700 hover:bg-red-700 text-white', () => markNoShow(node, rec), `Marcar que ${who} faltou`);
+            } else if (out === 'attended' || out === 'noshow') {
+                add('<i class="fa-solid fa-rotate-left mr-1"></i>Desfazer', 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200', () => undoAttendance(node, rec), `Desfazer marcação de ${who}`);
+            } else if (node === 'appointments') {
+                add('<i class="fa-solid fa-calendar-days mr-1"></i>Remarcar', 'bg-zinc-700 hover:bg-zinc-600 text-amber-400', () => openMoveModal(rec.key), `Remarcar ${who}`);
+                add('Cancelar', 'bg-zinc-700 hover:bg-red-700 text-red-300 hover:text-white', () => cancelAppointment(rec.key), `Cancelar agendamento de ${who}`);
+            }
+            return card;
+        }
+
+        function simpleRow(time, html, cls) {
+            const row = document.createElement('div');
+            row.className = `flex items-center gap-3 px-3 sm:px-4 py-2.5 rounded-2xl ${cls}`;
+            row.innerHTML = `<p class="w-14 shrink-0 text-center font-semibold">${escapeHtml(time)}</p><div class="flex-1 min-w-0 flex items-center justify-between gap-3">${html}</div>`;
+            return row;
+        }
+
+        function renderDay(date) {
+            const today = localToday();
+            const day = scheduleDay(date);
+            const dayApps = appointments.filter(a => a.date === date && a.time);
+            const blockedAll = blockedDates.some(b => b.date === date);
+            const blocked = blockedTimeSlots.filter(b => b.date === date);
+            const times = CheresSchedule.sortTimes([...day.times, ...dayApps.map(a => a.time), ...blocked.map(b => b.time)]);
+            const sorted = [...dayApps].sort((a, b) => a.time.localeCompare(b.time));
+            // Próximo cliente: o primeiro de hoje cujo horário ainda não terminou e que não foi marcado.
+            const next = date === today ? sorted.find(a => !a.attendance && !isTimePast(date, addMinutes(a.time, CheresSchedule.SLOT_MINUTES))) : null;
+
+            document.getElementById('dayTitle').textContent = `${date === today ? 'Hoje' : date === addDaysISO(today, 1) ? 'Amanhã' : CheresSchedule.DAY_NAMES[CheresSchedule.dayOfWeek(date)]} · ${formatDateBR(date)}`;
+            document.getElementById('dayNote').textContent = blockedAll ? 'Dia bloqueado para os clientes.' : (!day.open ? closedDayText(day) : '');
+            const freeCount = blockedAll ? 0 : day.times.filter(t => !dayApps.some(a => a.time === t) && !blocked.some(b => b.time === t) && !isTimePast(date, t)).length;
+            document.getElementById('daySummary').textContent =
+                `${dayApps.length} agendado${dayApps.length === 1 ? '' : 's'} · ${freeCount} livre${freeCount === 1 ? '' : 's'}` +
+                (next ? ` · próximo: ${next.time} ${firstNameOf(next.name) || ''}`.trimEnd() : '');
+
+            const box = document.getElementById('dayTimeline');
+            box.innerHTML = '';
+            times.forEach(time => {
+                const app = dayApps.find(a => a.time === time);
+                if (app) { box.appendChild(appointmentCard(app, 'appointments', { highlight: app === next })); return; }
+                const bl = blocked.find(b => b.time === time);
+                if (bl || blockedAll) {
+                    box.appendChild(simpleRow(time, `<span class="text-red-300 text-sm"><i class="fa-solid fa-lock mr-1"></i>Bloqueado${bl && bl.reason ? ' · ' + escapeHtml(bl.reason) : ''}</span>`, 'bg-red-950/40 border border-red-900/60 text-red-300'));
+                    return;
+                }
+                if (!day.times.includes(time)) return;
+                if (isTimePast(date, time)) {
+                    box.appendChild(simpleRow(time, '<span class="text-zinc-600 text-sm">Livre (já passou)</span>', 'border border-zinc-800 text-zinc-600'));
+                    return;
+                }
+                const row = simpleRow(time, '<span class="text-zinc-400 text-sm">Livre</span>', 'border border-dashed border-zinc-700 text-zinc-300');
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'text-amber-400 hover:text-amber-300 text-sm font-semibold px-2 py-1';
+                b.innerHTML = '<i class="fa-solid fa-plus mr-1"></i>Agendar';
+                b.setAttribute('aria-label', `Agendar cliente às ${time}`);
+                b.onclick = () => startAppointmentAt(date, time);
+                row.lastElementChild.appendChild(b);
+                box.appendChild(row);
+            });
+            if (!box.children.length) box.innerHTML = '<p class="text-zinc-500 text-sm py-4 text-center">Sem horários neste dia.</p>';
+        }
+
+        function renderWeek() {
+            const today = localToday();
+            document.getElementById('dayTitle').textContent = 'Próximos 7 dias';
+            document.getElementById('dayNote').textContent = '';
+            const box = document.getElementById('dayTimeline');
+            box.innerHTML = '';
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+                const date = addDaysISO(today, i);
+                const apps = appointments.filter(a => a.date === date).sort((a, b) => a.time.localeCompare(b.time));
+                total += apps.length;
+                const day = scheduleDay(date);
+                const section = document.createElement('div');
+                section.className = 'bg-zinc-800/60 rounded-2xl p-3 sm:p-4';
+                const head = document.createElement('button');
+                head.type = 'button';
+                head.className = 'w-full flex items-center justify-between gap-3 text-left';
+                head.innerHTML = `<span class="font-bold">${escapeHtml(i === 0 ? 'Hoje' : i === 1 ? 'Amanhã' : dayLabel(date))}</span>
+                    <span class="text-sm ${day.open ? 'text-zinc-400' : 'text-red-400'}">${day.open ? `${apps.length} agendado${apps.length === 1 ? '' : 's'}` : 'Fechado'} <i class="fa-solid fa-chevron-right ml-1 text-xs"></i></span>`;
+                head.onclick = () => pickDay(i === 0 ? 'today' : date);
+                section.appendChild(head);
+                if (apps.length) {
+                    const list = document.createElement('ul');
+                    list.className = 'mt-2 space-y-1 text-sm';
+                    apps.forEach(a => {
+                        const li = document.createElement('li');
+                        li.className = 'flex gap-3';
+                        li.innerHTML = `<span class="w-12 shrink-0 font-semibold text-amber-400">${escapeHtml(a.time)}</span><span class="min-w-0 truncate">${escapeHtml(a.name || 'Cliente')} <span class="text-zinc-500">· ${escapeHtml(a.service || '')}</span></span>`;
+                        list.appendChild(li);
+                    });
+                    section.appendChild(list);
+                }
+                box.appendChild(section);
+            }
+            document.getElementById('daySummary').textContent = `${total} agendamento${total === 1 ? '' : 's'}`;
+        }
+
+        // ---- Pendentes de confirmação (já passou e ninguém marcou) ----
+        function pendingRecords() {
+            const list = [
+                ...appointments.filter(a => a.date && a.time && CheresAttendance.outcome(a, isTimePast, false) === 'pending').map(rec => ({ rec, node: 'appointments' })),
+                ...appointmentHistory.filter(a => a.date && CheresAttendance.outcome(a, isTimePast, true) === 'pending').map(rec => ({ rec, node: 'appointmentHistory' }))
+            ];
+            return list.sort((x, y) => (y.rec.date + y.rec.time).localeCompare(x.rec.date + x.rec.time));
+        }
+
+        function renderPending() {
+            const items = pendingRecords();
+            const box = document.getElementById('pendingBox');
+            box.classList.toggle('hidden', !items.length);
+            if (!items.length) return;
+            document.getElementById('pendingCount').textContent = items.length;
+            const list = document.getElementById('pendingList');
+            list.innerHTML = '';
+            items.slice(0, 30).forEach(({ rec, node }) => list.appendChild(appointmentCard(rec, node, { showDate: true })));
+            if (items.length > 30) list.insertAdjacentHTML('beforeend', `<p class="text-xs text-zinc-500">… e mais ${items.length - 30}. Marque os de cima primeiro.</p>`);
+        }
+
+        // ---- Atendido / Faltou ----
+        let attendTarget = null;
+        let modalOpener = null;
+
+        function openAttendModal(node, rec) {
+            attendTarget = { node, rec };
+            modalOpener = document.activeElement;
+            document.getElementById('atInfo').textContent = `${rec.name || 'Cliente'} · ${rec.service || ''} · ${formatDateBR(rec.date)} às ${rec.time}`;
+            const price = CheresAttendance.listPrice(rec, servicePrices);
+            const amount = rec.payment && typeof rec.payment.amount === 'number' ? rec.payment.amount : price;
+            document.getElementById('atAmount').value = amount.toFixed(2).replace('.', ',');
+            document.getElementById('atPriceHint').textContent = `Preço de tabela: ${money(price)}. Altere se deu desconto.`;
+            const method = (rec.payment && rec.payment.method) || 'pix';
+            document.querySelectorAll('input[name="atMethod"]').forEach(r => { r.checked = r.value === method; });
+            document.getElementById('attendModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            document.querySelector('input[name="atMethod"]:checked').focus();
+        }
+
+        function closeAttendModal() {
+            document.getElementById('attendModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            attendTarget = null;
+            restoreFocus();
+        }
+
+        function restoreFocus() {
+            if (modalOpener && document.contains(modalOpener)) modalOpener.focus();
+            modalOpener = null;
+        }
+
+        async function saveAttended() {
+            if (!attendTarget) return;
+            const { node, rec } = attendTarget;
+            const amount = CheresAttendance.parseAmount(document.getElementById('atAmount').value);
+            if (amount === null) { alert('Informe o valor recebido (ex.: 35 ou 30,50).'); return; }
+            const method = (document.querySelector('input[name="atMethod"]:checked') || {}).value || 'pix';
+            const update = {
+                attendance: 'attended',
+                payment: { method, amount },
+                attendanceAt: new Date().toISOString()
+            };
+            if (typeof rec.price !== 'number') update.price = CheresAttendance.listPrice(rec, servicePrices);
+            if (node === 'appointmentHistory') update.status = 'attended';
+            try {
+                await db.ref(`${node}/${rec.key}`).update(update);
+                closeAttendModal();
+                showToast({ title: 'Atendimento registrado', body: `${rec.name || 'Cliente'} · ${CheresAttendance.METHODS[method]} · ${money(amount)}`, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        async function markNoShow(node, rec) {
+            if (!confirm(`Marcar que ${rec.name || 'o cliente'} faltou (${formatDateBR(rec.date)} às ${rec.time})?`)) return;
+            const update = { attendance: 'noshow', payment: null, attendanceAt: new Date().toISOString() };
+            if (node === 'appointmentHistory') update.status = 'noshow';
+            try { await db.ref(`${node}/${rec.key}`).update(update); } catch (e) { failSave(e); }
+        }
+
+        async function undoAttendance(node, rec) {
+            if (!confirm(`Desfazer a marcação de ${rec.name || 'cliente'} (${formatDateBR(rec.date)} às ${rec.time})? Ele volta para "pendente".`)) return;
+            const update = { attendance: null, payment: null, attendanceAt: null };
+            if (node === 'appointmentHistory') update.status = 'pending';
+            try { await db.ref(`${node}/${rec.key}`).update(update); } catch (e) { failSave(e); }
+        }
+
+        // ---- Lembrete de amanhã ----
+        function reminderMessage(rec) {
+            const first = firstNameOf(rec.name);
+            return `Oi${first ? ', ' + first : ''}! Lembrando do seu horário amanhã às ${hourText(rec.time)} na Barbearia Cheres. Até lá! — ${BARBER_NAME}`;
+        }
+
+        function renderReminders() {
+            const date = addDaysISO(localToday(), 1);
+            const apps = appointments.filter(a => a.date === date && a.time).sort((a, b) => a.time.localeCompare(b.time));
+            const list = document.getElementById('reminderList');
+            const sent = apps.filter(a => a.remindedFor === `${a.date} ${a.time}`).length;
+            document.getElementById('reminderSummary').textContent = apps.length ? `${sent} de ${apps.length} lembrado${apps.length === 1 ? '' : 's'}` : '';
+            list.innerHTML = '';
+            if (!apps.length) { list.innerHTML = '<p class="text-zinc-500 text-sm">Nenhum cliente agendado para amanhã.</p>'; return; }
+            apps.forEach(a => {
+                const pk = phoneKeyOf(a);
+                const done = a.remindedFor === `${a.date} ${a.time}`;   // se remarcar, volta a "não lembrado"
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 bg-zinc-800 rounded-2xl px-3 sm:px-4 py-3';
+                row.innerHTML = `
+                    <p class="w-14 shrink-0 text-center font-bold text-amber-400">${escapeHtml(a.time)}</p>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold truncate">${escapeHtml(a.name || 'Cliente')}</p>
+                        <p class="text-xs ${done ? 'text-emerald-400' : 'text-zinc-400'}">${done ? '<i class="fa-solid fa-check mr-1"></i>Lembrado' : escapeHtml(a.service || '')}</p>
+                    </div>`;
+                if (pk) {
+                    const link = document.createElement('a');
+                    link.href = waLink(pk, reminderMessage(a));
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.className = `shrink-0 px-3 py-2 rounded-xl text-sm font-semibold transition ${done ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200' : 'bg-green-600 hover:bg-green-500 text-white'}`;
+                    link.innerHTML = `<i class="fa-brands fa-whatsapp mr-1"></i>${done ? 'De novo' : 'Lembrar'}`;
+                    link.setAttribute('aria-label', `Enviar lembrete para ${a.name || 'cliente'} no WhatsApp`);
+                    link.addEventListener('click', () => {
+                        appointmentsRef.child(a.key).update({ remindedFor: `${a.date} ${a.time}` }).catch(err => console.error('Lembrete:', err));
+                    });
+                    row.appendChild(link);
+                }
+                list.appendChild(row);
+            });
+        }
+
+        function startAppointmentAt(date, time) {
+            switchDashboardTab('appointments');
+            toggleNewAppointment(true);
+            document.getElementById('naDate').value = date;
+            refreshNewAppSlots();
+            document.getElementById('naTime').value = time;
+            document.getElementById('naForm').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('naPhone').focus({ preventScroll: true });
+        }
+
+        // ---- Remarcar pelo painel (mesma reserva atômica do site) ----
+        let moveTarget = null;
+        const selfChanges = new Set();   // remarcações feitas por este painel (não geram aviso)
+
+        function openMoveModal(key) {
+            const a = appointments.find(x => x.key === key);
+            if (!a) { alert('Agendamento não encontrado.'); return; }
+            moveTarget = a;
+            modalOpener = document.activeElement;
+            document.getElementById('mvInfo').textContent = `${a.name || 'Cliente'} · ${a.service || ''} — hoje está em ${formatDateBR(a.date)} às ${a.time}`;
+            const input = document.getElementById('mvDate');
+            input.min = localToday();
+            input.value = a.date >= localToday() ? a.date : localToday();
+            refreshMoveSlots();
+            document.getElementById('moveModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            input.focus();
+        }
+
+        function closeMoveModal() {
+            document.getElementById('moveModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            moveTarget = null;
+            restoreFocus();
+        }
+
+        function refreshMoveSlots() {
+            const a = moveTarget;
+            const date = document.getElementById('mvDate').value;
+            const sel = document.getElementById('mvTime');
+            const note = document.getElementById('mvNote');
+            sel.innerHTML = '<option value="">Escolha o horário</option>';
+            note.textContent = '';
+            if (!a || !date) return;
+            const { day, times } = barberTimesFor(date);
+            const notes = [];
+            if (!day.open) notes.push(closedDayText(day));
+            if (blockedDates.some(b => b.date === date)) notes.push('Esta data está bloqueada.');
+            note.textContent = notes.join(' ');
+            times.forEach(time => {
+                const current = a.date === date && a.time === time;
+                const busy = !current && appointments.some(x => x.date === date && x.time === time);
+                const blocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
+                const past = isTimePast(date, time);
+                const outside = day.open && !day.times.includes(time);
+                const opt = document.createElement('option');
+                opt.value = time;
+                opt.textContent = time + (current ? ' — horário atual' : busy ? ' — ocupado' : blocked ? ' — bloqueado' : past ? ' — já passou' : outside ? ' — fora do horário' : '');
+                opt.disabled = current || busy || blocked || past;
+                sel.appendChild(opt);
+            });
+        }
+
+        async function saveMove() {
+            const a = moveTarget;
+            if (!a) return;
+            const date = document.getElementById('mvDate').value;
+            const time = document.getElementById('mvTime').value;
+            if (!date || !time) { alert('Escolha a nova data e o horário.'); return; }
+            if (date === a.date && time === a.time) { alert('Escolha um horário diferente do atual.'); return; }
+            if (isTimePast(date, time)) { alert('Esse horário já passou.'); return; }
+            const day = scheduleDay(date);
+            if (!day.open && !confirm(`${closedDayText(day)} Remarcar mesmo assim?`)) return;
+            if (day.open && !day.times.includes(time) && !confirm(`${time} está fora do horário de atendimento deste dia. Remarcar mesmo assim?`)) return;
+            if (blockedDates.some(b => b.date === date) && !confirm('Esta data está bloqueada. Remarcar mesmo assim?')) return;
+            if (appointments.some(x => x.key !== a.key && x.date === date && x.time === time)) { alert('Este horário já está ocupado.'); refreshMoveSlots(); return; }
+
+            const pk = phoneKeyOf(a);
+            const owner = slotOwner(pk, Object.fromEntries(siteClients.map(c => [c.key, c])));
+            const newRef = bookedSlotsRef.child(slotKey(date, time));
+            try {
+                // Reserva o novo horário de forma atômica antes de largar o antigo.
+                const result = await newRef.transaction(cur => (cur ? undefined : owner));
+                if (!result.committed) { alert('Este horário acabou de ser ocupado. Escolha outro.'); refreshMoveSlots(); return; }
+                selfChanges.add(a.key);
+                try {
+                    await appointmentsRef.child(a.key).update({
+                        date, time,
+                        rescheduledFrom: `${a.date} ${a.time}`,
+                        rescheduledAt: new Date().toISOString(),
+                        rescheduledBy: 'barber'
+                    });
+                } catch (e) {
+                    selfChanges.delete(a.key);
+                    newRef.remove();
+                    throw e;
+                }
+                await bookedSlotsRef.child(slotKey(a.date, a.time)).remove().catch(() => {});
+                closeMoveModal();
+                const first = firstNameOf(a.name);
+                const msg = `Oi${first ? ', ' + first : ''}! Seu horário na Barbearia Cheres foi remarcado para ${formatDateBR(date)} às ${hourText(time)}. Qualquer coisa, é só me chamar. — ${BARBER_NAME}`;
+                showToast({
+                    title: 'Agendamento remarcado',
+                    body: `${a.name || 'Cliente'}: ${formatDateBR(date)} às ${time}`,
+                    kind: 'ok',
+                    action: pk ? { label: 'Avisar no WhatsApp', href: waLink(pk, msg) } : null,
+                    duration: 15000
+                });
+            } catch (e) { failSave(e); }
+        }
+
+        // ============ AVISOS DE NOVO AGENDAMENTO, REMARCAÇÃO E CANCELAMENTO ============
+        let lastAppSnapshot = null;   // chave -> { date, time } da leitura anterior
+        let knownCancelled = null;
+        let audioCtx = null;
+
+        function watchAppointmentChanges() {
+            const now = new Map(appointments.map(a => [a.key, a]));
+            if (lastAppSnapshot) {
+                now.forEach((a, key) => {
+                    const before = lastAppSnapshot.get(key);
+                    if (!before) {
+                        if (a.createdBy !== 'barber') notify('Novo agendamento', `${a.name || 'Cliente'} · ${a.service || ''} — ${formatDateBR(a.date)} às ${a.time}`);
+                    } else if (before.date !== a.date || before.time !== a.time) {
+                        if (selfChanges.has(key)) selfChanges.delete(key);
+                        else notify('Agendamento remarcado', `${a.name || 'Cliente'}: ${formatDateBR(before.date)} ${before.time} → ${formatDateBR(a.date)} às ${a.time}`);
+                    }
+                });
+            }
+            lastAppSnapshot = new Map([...now].map(([k, a]) => [k, { date: a.date, time: a.time }]));
+        }
+
+        function watchCancellations() {
+            if (knownCancelled) {
+                cancelledList.forEach(c => {
+                    if (!knownCancelled.has(c.key) && c.cancelledBy === 'client') {
+                        notify('Agendamento cancelado', `${c.name || 'Cliente'} cancelou ${c.service || ''} — ${formatDateBR(c.date)} às ${c.time}`);
+                    }
+                });
+            }
+            knownCancelled = new Set(cancelledList.map(c => c.key));
+        }
+
+        function notify(title, body) {
+            showToast({ title, body, kind: 'alert', duration: 20000 });
+            playChime();
+            if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState === 'hidden') {
+                const opts = { body, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'cheres-' + Date.now() };
+                // No Android a notificação precisa passar pelo service worker.
+                const viaSW = 'serviceWorker' in navigator
+                    ? navigator.serviceWorker.getRegistration().then(reg => (reg ? reg.showNotification(title, opts).then(() => true) : false))
+                    : Promise.resolve(false);
+                viaSW.catch(() => false).then(done => { if (!done) { try { new Notification(title, opts); } catch (_) {} } });
+            }
+        }
+
+        function showToast({ title, body, kind = 'ok', action = null, duration = 5000 }) {
+            const area = document.getElementById('toastArea');
+            const t = document.createElement('div');
+            t.className = `pointer-events-auto rounded-2xl border shadow-xl p-4 flex gap-3 items-start ${kind === 'alert' ? 'bg-zinc-900 border-amber-500' : 'bg-zinc-900 border-emerald-600'}`;
+            t.setAttribute('role', 'status');
+            t.innerHTML = `<i class="fa-solid ${kind === 'alert' ? 'fa-bell text-amber-400' : 'fa-circle-check text-emerald-400'} mt-1"></i>
+                <div class="min-w-0 flex-1"><p class="font-bold toast-title"></p><p class="text-sm text-zinc-300 toast-body break-words"></p><div class="toast-action"></div></div>
+                <button type="button" class="text-zinc-400 hover:text-white px-1" aria-label="Fechar aviso"><i class="fa-solid fa-xmark"></i></button>`;
+            t.querySelector('.toast-title').textContent = title;
+            t.querySelector('.toast-body').textContent = body;
+            if (action) {
+                const a = document.createElement('a');
+                a.href = action.href;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.className = 'inline-block mt-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg';
+                a.innerHTML = '<i class="fa-brands fa-whatsapp mr-1"></i>';
+                a.appendChild(document.createTextNode(action.label));
+                t.querySelector('.toast-action').appendChild(a);
+            }
+            const close = () => t.remove();
+            t.querySelector('button').onclick = close;
+            area.prepend(t);
+            while (area.children.length > 4) area.lastElementChild.remove();
+            setTimeout(close, duration);
+        }
+
+        // O navegador só libera som depois de um toque na página.
+        function unlockAudio() {
+            try {
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (_) { audioCtx = null; }
+        }
+        document.addEventListener('pointerdown', unlockAudio, { once: true });
+
+        function playChime() {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const t0 = audioCtx.currentTime;
+            [880, 1320].forEach((freq, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                const t = t0 + i * 0.18;
+                o.type = 'sine';
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+                o.connect(g).connect(audioCtx.destination);
+                o.start(t);
+                o.stop(t + 0.4);
+            });
+        }
+
+        function updateAlertsButton() {
+            const granted = 'Notification' in window && Notification.permission === 'granted';
+            const on = granted || (audioCtx && audioCtx.state === 'running');
+            document.getElementById('alertsIcon').className = `fa-solid ${on ? 'fa-bell text-amber-400' : 'fa-bell-slash'}`;
+            document.getElementById('alertsText').textContent = on ? 'Avisos ligados' : 'Ativar avisos';
+            document.getElementById('alertsBtn').setAttribute('aria-label', on ? 'Avisos ligados (tocar para testar o som)' : 'Ativar avisos de novos agendamentos');
+        }
+
+        async function enableAlerts() {
+            unlockAudio();
+            setTimeout(playChime, 50);
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (_) {}
+            }
+            if ('Notification' in window && Notification.permission === 'denied') {
+                showToast({ title: 'Notificações bloqueadas', body: 'O navegador bloqueou as notificações. O aviso na tela e o som continuam funcionando com o painel aberto.', kind: 'alert', duration: 8000 });
+            } else {
+                showToast({ title: 'Avisos ligados', body: 'Com o painel aberto, você recebe aviso com som quando um cliente agenda, remarca ou cancela.', kind: 'ok' });
+            }
+            updateAlertsButton();
+        }
+
+        function registerPanelApp() {
+            // Service worker mínimo: só para as notificações no Android. Não guarda nada offline.
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker:', err));
+            updateAlertsButton();
+        }
+
+        // Atualiza a tela Hoje a cada minuto (próximo cliente, pendentes).
+        setInterval(() => {
+            const tab = document.getElementById('tab-today');
+            if (adminDataStarted && tab && !tab.classList.contains('hidden')) renderToday();
+        }, 60000);
+
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('attendModal').classList.contains('hidden')) closeAttendModal();
+            if (!document.getElementById('moveModal').classList.contains('hidden')) closeMoveModal();
+        });
+
         // ============ LOGIN DO BARBEIRO ============
         function showDashboard() {
             startAdminData();
+            registerPanelApp();
             document.getElementById('adminLogin').classList.add('hidden');
             document.getElementById('adminDashboard').classList.remove('hidden');
             renderAdminAppointments();
