@@ -279,7 +279,11 @@ describe('horário de funcionamento (fase 1)', () => {
             ['scheduleExceptions/2026-12-24', { closed: false }],
             ['scheduleExceptions/2026-12-24', { closed: true, times: { '0900': true } }],
             ['scheduleExceptions/2026-12-24', { times: { '0900': 'sim' } }],
-            ['scheduleExceptions/2026-12-24', { note: '<script>' }]
+            ['scheduleExceptions/2026-12-24', { note: '<script>' }],
+            ['settings', 'x'],                                                         // valor simples por cima do nó
+            ['settings/schedule', 'x'],
+            ['settings/schedule/days', 'x'],
+            ['scheduleExceptions', 'x']
         ];
         for (const [path, value] of bad) await assertFails(set(ref(andre(), path), value));
     });

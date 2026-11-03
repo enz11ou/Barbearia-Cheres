@@ -56,6 +56,14 @@ describe('semana padrão editada', () => {
         assert.equal(S.forDate('2026-12-09', settings, {}).open, false);
         assert.equal(S.describeOpenDays(settings), 'Ter e Qui a Sáb');
     });
+    test('textos dos dias: dois seguidos, grupos mistos e todos fechados', () => {
+        const only = list => ({ days: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, list.includes(d) ? { open: true, times: store(['10:00']) } : { open: false }])) });
+        assert.equal(S.describeOpenDays(only([2, 3])), 'Ter e Qua');
+        assert.equal(S.describeOpenDays(only([1, 6, 0])), 'Seg, Sáb e Dom');
+        assert.equal(S.describeOpenDays(only([1, 2, 3, 4, 5, 6, 0])), 'Todos os dias');
+        assert.equal(S.describeOpenDays(only([])), 'Sem dias fixos');
+        assert.equal(S.describeHours(only([])), '');
+    });
     test('"days" vindo do Firebase como array também funciona', () => {
         const days = []; days[6] = { open: true, times: store(['10:00']) };
         assert.deepEqual(plain(S.forDate(SAT, { days }, {}).times), ['10:00']);

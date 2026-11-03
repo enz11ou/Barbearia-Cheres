@@ -521,6 +521,9 @@
         // ============ DATA STRUCTURES ============
         let scheduleSettings = null;   // semana padrão salva pelo barbeiro (null = padrão do schedule.js)
         let scheduleExceptions = {};   // datas especiais a partir de hoje
+        // Só mostra a grade depois de ler o horário (ou de a leitura falhar, caindo no padrão).
+        const scheduleReady = { settings: false, exceptions: false };
+        const scheduleLoaded = () => scheduleReady.settings && scheduleReady.exceptions;
         let bookedSlots = {};   // só horários ocupados (sem dados pessoais)
         let myAppointments = [];
         let myHistory = [];
@@ -555,14 +558,16 @@
 
         scheduleRef.on('value', snapshot => {
             scheduleSettings = snapshot.val();
+            scheduleReady.settings = true;
             updateOpenDaysText();
             refreshSlotGrids();
-        });
+        }, () => { scheduleReady.settings = true; refreshSlotGrids(); });
 
         scheduleExceptionsRef.orderByKey().startAt(localISODate()).on('value', snapshot => {
             scheduleExceptions = snapshot.val() || {};
+            scheduleReady.exceptions = true;
             refreshSlotGrids();
-        });
+        }, () => { scheduleReady.exceptions = true; refreshSlotGrids(); });
 
         bookedSlotsRef.on('value', snapshot => {
             bookedSlots = snapshot.val() || {};
@@ -603,6 +608,11 @@
         function getDaySlots(date) {
             const result = { closedMessage: '', slots: [] };
             if (!date) return result;
+            if (!scheduleLoaded()) {
+                result.loading = true;
+                result.closedMessage = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando horários…';
+                return result;
+            }
 
             const day = CheresSchedule.forDate(date, scheduleSettings, scheduleExceptions);
             if (!day.open) {
@@ -637,7 +647,7 @@
             if (!date) return;
             const day = getDaySlots(date);
             if (day.closedMessage) {
-                container.innerHTML = `<p class="col-span-full text-center text-red-400 py-4">${day.closedMessage}</p>`;
+                container.innerHTML = `<p class="col-span-full text-center ${day.loading ? 'text-zinc-400' : 'text-red-400'} py-4">${day.closedMessage}</p>`;
                 return;
             }
             day.slots.forEach(({ time, state, reason }) => {

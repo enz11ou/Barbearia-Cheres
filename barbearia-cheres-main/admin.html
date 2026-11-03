@@ -474,7 +474,7 @@
                                     <select id="rgLast" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500"></select>
                                 </div>
                             </div>
-                            <label class="flex items-start gap-3 text-sm text-zinc-300">
+                            <label id="rgSkipBox" class="flex items-start gap-3 text-sm text-zinc-300">
                                 <input type="checkbox" id="rgSkipClosed" checked class="mt-1 w-4 h-4 accent-amber-500">
                                 <span>Pular os dias em que a barbearia normalmente fecha (ex.: domingo e segunda)</span>
                             </label>
@@ -1420,11 +1420,11 @@
         }
 
         // ---- Novo agendamento feito pelo barbeiro ----
-        // Horários que o barbeiro pode escolher numa data. Em dia fechado, oferece a grade padrão
-        // (ele pode agendar mesmo assim, depois de confirmar).
+        // Horários que o barbeiro pode escolher numa data: os do dia e, para encaixes, qualquer outro
+        // de 07:00 a 22:30 (marcado como "fora do horário" e com confirmação ao salvar).
         function barberTimesFor(date) {
             const day = scheduleDay(date);
-            return { day, times: day.open ? day.times : CheresSchedule.DEFAULT_TIMES };
+            return { day, times: CheresSchedule.sortTimes([...day.times, ...CheresSchedule.range('07:00', '22:30')]) };
         }
 
         function initNewAppointmentForm() {
@@ -1497,7 +1497,8 @@
                 const busy = appointments.some(a => a.date === date && a.time === time);
                 const blocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
                 const past = isTimePast(date, time);
-                const tag = busy ? ' — ocupado' : blocked ? ' — bloqueado' : past ? ' — já passou' : '';
+                const outside = day.open && !day.times.includes(time);
+                const tag = busy ? ' — ocupado' : blocked ? ' — bloqueado' : past ? ' — já passou' : outside ? ' — fora do horário' : '';
                 const opt = document.createElement('option');
                 opt.value = time;
                 opt.textContent = time + tag;
@@ -1533,6 +1534,7 @@
 
             const day = scheduleDay(date);
             if (!day.open && !confirm(`${closedDayText(day)} Agendar mesmo assim?`)) return;
+            if (day.open && !day.times.includes(time) && !confirm(`${time} está fora do horário de atendimento deste dia. Agendar mesmo assim?`)) return;
             if (blockedDates.some(b => b.date === date) && !confirm('Esta data está bloqueada. Agendar mesmo assim?')) return;
             if (appointments.some(a => a.date === date && a.time === time)) {
                 alert('Este horário já está ocupado.');
@@ -1727,6 +1729,7 @@
         const EDITOR_BASE_TIMES = CheresSchedule.range('07:00', '22:30');   // grade sempre visível no editor
         const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];                           // começa na segunda
         let scheduleEditor = null;   // { kind: 'weekday' | 'date', dow, date, open, times: Set }
+        let scheduleEditorOpener = null;   // elemento que abriu o editor (o foco volta para ele)
 
         function scheduleDay(date) {
             return CheresSchedule.forDate(date, scheduleSettings, scheduleExceptions);
@@ -1767,7 +1770,7 @@
             renderWeekdayList();
             renderExceptionsList();
             document.getElementById('settingsWeekSummary').textContent =
-                `${CheresSchedule.describeOpenDays(scheduleSettings)}, ${CheresSchedule.describeHours(scheduleSettings)}`;
+                [CheresSchedule.describeOpenDays(scheduleSettings), CheresSchedule.describeHours(scheduleSettings)].filter(Boolean).join(', ');
             refreshBlockTimeOptions();
             if (document.getElementById('naDate')) refreshNewAppSlots();
         }
@@ -1806,12 +1809,12 @@
                 row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl px-4 py-3';
                 row.innerHTML = `
                     <div class="min-w-0">
-                        <p class="font-semibold">${weekdayLabel(date)}, ${formatDateBR(date)}</p>
+                        <p class="font-semibold">${escapeHtml(weekdayLabel(date) + ', ' + formatDateBR(date))}</p>
                         <p class="text-sm ${day.open ? 'text-zinc-400' : 'text-red-400'}">${escapeHtml(summarizeDay(day))}</p>
                     </div>
                     <div class="flex gap-2 shrink-0">
-                        <button type="button" class="ex-edit bg-zinc-700 hover:bg-zinc-600 w-10 h-10 rounded-xl" aria-label="Editar ${formatDateBR(date)}"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" class="ex-del bg-zinc-700 hover:bg-red-700 w-10 h-10 rounded-xl" aria-label="Voltar ${formatDateBR(date)} ao padrão"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="ex-edit bg-zinc-700 hover:bg-zinc-600 w-10 h-10 rounded-xl" aria-label="Editar ${escapeHtml(formatDateBR(date))}"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="ex-del bg-zinc-700 hover:bg-red-700 w-10 h-10 rounded-xl" aria-label="Voltar ${escapeHtml(formatDateBR(date))} ao padrão"><i class="fa-solid fa-trash"></i></button>
                     </div>`;
                 row.querySelector('.ex-edit').onclick = () => openScheduleEditor({ kind: 'date', date });
                 row.querySelector('.ex-del').onclick = () => removeException(date);
@@ -1868,6 +1871,7 @@
                 ? CheresSchedule.weekday(scheduleSettings, target.dow)
                 : scheduleDay(target.date);
             scheduleEditor = { ...target, open: day.open, times: new Set(day.times) };
+            scheduleEditorOpener = document.activeElement;
 
             const title = document.getElementById('seTitle');
             const sub = document.getElementById('seSubtitle');
@@ -1893,6 +1897,8 @@
             document.getElementById('scheduleEditor').classList.add('hidden');
             document.body.style.overflow = '';
             scheduleEditor = null;
+            if (scheduleEditorOpener && document.contains(scheduleEditorOpener)) scheduleEditorOpener.focus();
+            scheduleEditorOpener = null;
         }
 
         function renderScheduleEditor() {
@@ -2006,7 +2012,9 @@
 
         // ---- Várias datas de uma vez ----
         function onRangeModeChange() {
-            document.getElementById('rgHours').classList.toggle('hidden', document.getElementById('rgMode').value !== 'hours');
+            const hours = document.getElementById('rgMode').value === 'hours';
+            document.getElementById('rgHours').classList.toggle('hidden', !hours);
+            document.getElementById('rgSkipBox').classList.toggle('hidden', !hours);
         }
 
         async function applyScheduleRange() {
@@ -2034,7 +2042,7 @@
 
             const all = CheresSchedule.datesBetween(from, to);
             if (all.length > 120) { alert('Escolha um período de até 120 dias.'); return; }
-            const dates = all.filter(d => !skipClosed || CheresSchedule.weekday(scheduleSettings, CheresSchedule.dayOfWeek(d)).open);
+            const dates = all.filter(d => mode !== 'hours' || !skipClosed || CheresSchedule.weekday(scheduleSettings, CheresSchedule.dayOfWeek(d)).open);
             if (!dates.length) { alert('Nenhuma data nesse período (todas caem em dias que a barbearia fecha).'); return; }
 
             const updates = {};
@@ -2073,7 +2081,15 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape' && scheduleEditor) closeScheduleEditor();
+            if (!scheduleEditor) return;
+            if (e.key === 'Escape') { closeScheduleEditor(); return; }
+            if (e.key === 'Tab') {   // mantém o foco dentro do editor
+                const items = [...document.querySelectorAll('#scheduleEditor button, #scheduleEditor input, #scheduleEditor select')].filter(el => el.offsetParent !== null);
+                if (!items.length) return;
+                const first = items[0], last = items[items.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
         });
 
         // ============ LOGIN DO BARBEIRO ============

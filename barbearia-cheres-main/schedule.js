@@ -108,9 +108,11 @@
             var g = groups[groups.length - 1];
             if (g && pos(d) === pos(g[g.length - 1]) + 1) g.push(d); else groups.push([d]);
         });
-        var parts = groups.map(function (g) {
-            if (g.length >= 3) return DAY_SHORT[g[0]] + ' a ' + DAY_SHORT[g[g.length - 1]];
-            return g.map(function (d) { return DAY_SHORT[d]; }).join(', ');
+        // Três ou mais dias seguidos viram "Ter a Sáb"; os outros entram um a um.
+        var parts = [];
+        groups.forEach(function (g) {
+            if (g.length >= 3) parts.push(DAY_SHORT[g[0]] + ' a ' + DAY_SHORT[g[g.length - 1]]);
+            else g.forEach(function (d) { parts.push(DAY_SHORT[d]); });
         });
         if (parts.length === 1) return parts[0];
         return parts.slice(0, -1).join(', ') + ' e ' + parts[parts.length - 1];
