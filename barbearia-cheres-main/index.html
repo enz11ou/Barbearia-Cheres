@@ -268,6 +268,7 @@
                             </div>
                         </div>
                         <div id="timeSlots" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
+                        <div id="waitlistBox" class="hidden mt-5 bg-zinc-900 border border-amber-600/40 rounded-2xl p-4 sm:p-5" aria-live="polite"></div>
                     </div>
                 </form>
             </div>
@@ -439,6 +440,17 @@
                 </div>
             </div>
 
+            <div id="profLoyalty" class="bg-zinc-950 border border-amber-600/30 rounded-3xl p-5 sm:p-6 shadow-2xl mb-6">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <h3 class="font-bold text-amber-500"><i class="fa-solid fa-gift mr-2"></i>Fidelidade Cheres</h3>
+                    <span id="profLoyaltyCount" class="text-sm font-semibold text-zinc-200"></span>
+                </div>
+                <div id="profLoyaltyBar" class="h-3 bg-zinc-800 rounded-full overflow-hidden" role="progressbar" aria-label="Cortes rumo ao corte grátis" aria-valuemin="0">
+                    <div id="profLoyaltyFill" class="h-full bg-amber-500 rounded-full transition-all" style="width:0"></div>
+                </div>
+                <p id="profLoyaltyText" class="text-sm text-zinc-400 mt-3"></p>
+            </div>
+
             <div class="bg-zinc-950 border border-amber-600/30 rounded-3xl p-6 sm:p-8 shadow-2xl mb-6">
                 <div class="flex items-center justify-between mb-4 gap-3">
                     <h3 class="text-xl font-bold text-amber-500">Próximos agendamentos</h3>
@@ -518,6 +530,10 @@
         const bookedSlotsRef = db.ref('bookedSlots');
         const scheduleRef = db.ref('settings/schedule');
         const scheduleExceptionsRef = db.ref('scheduleExceptions');
+        const loyaltySettingsRef = db.ref('settings/loyalty');
+        let loyaltyCfg = null;        // settings/loyalty (null = 7 cortes, desde 03/11/2026)
+        let myRedeemedCount = 0;      // brindes de fidelidade já usados pelo cliente logado
+        const myWaitlist = {};        // data -> true/false (se o cliente está na lista de espera do dia)
 
         // ============ DATA STRUCTURES ============
         let scheduleSettings = null;   // semana padrão salva pelo barbeiro (null = padrão do schedule.js)
@@ -556,6 +572,8 @@
             const label = document.getElementById('openDaysLabel');
             if (label) label.textContent = CheresSchedule.describeOpenDays(scheduleSettings);
         }
+
+        loyaltySettingsRef.on('value', snap => { loyaltyCfg = snap.val(); renderProfile(); }, () => {});
 
         scheduleRef.on('value', snapshot => {
             scheduleSettings = snapshot.val();
@@ -678,6 +696,70 @@
 
         function generateTimeSlots(date) {
             renderSlotButtons(document.getElementById('timeSlots'), date, (time, btn) => selectTime(time, btn));
+            renderWaitlistBox(date);
+        }
+
+        // ============ LISTA DE ESPERA ============
+        // Dia lotado = aberto, com horários ainda por vir, mas nenhum livre.
+        // Só conta como lotado se há horários ocupados por clientes (dia todo bloqueado pelo barbeiro não é "lotado").
+        function isDayFull(date) {
+            const day = getDaySlots(date);
+            if (day.closedMessage || !day.slots.length) return false;
+            const upcoming = day.slots.filter(s => s.state !== 'past');
+            return upcoming.some(s => s.state === 'booked') && !upcoming.some(s => s.state === 'free');
+        }
+
+        // Acompanha em tempo real a vaga do cliente na lista de espera do dia escolhido.
+        let waitlistWatch = null;
+        function watchMyWaitlist(date) {
+            const key = currentClient ? `${date}/${currentClient.phoneKey}` : null;
+            if (waitlistWatch && waitlistWatch.key === key) return;
+            if (waitlistWatch) waitlistWatch.ref.off('value', waitlistWatch.cb);
+            waitlistWatch = null;
+            if (!key) return;
+            const ref = db.ref(`waitlist/${key}`);
+            const cb = snap => {
+                myWaitlist[date] = snap.exists();
+                if (document.getElementById('bookingDate').value === date) renderWaitlistBox(date);
+            };
+            ref.on('value', cb, () => { myWaitlist[date] = false; });
+            waitlistWatch = { key, ref, cb };
+        }
+
+        function renderWaitlistBox(date) {
+            const box = document.getElementById('waitlistBox');
+            if (!box) return;
+            if (!date || !currentClient || !isDayFull(date)) { box.classList.add('hidden'); return; }
+            box.classList.remove('hidden');
+            watchMyWaitlist(date);
+            if (myWaitlist[date] === undefined) {
+                box.innerHTML = '<p class="text-sm text-zinc-400">Verificando a lista de espera…</p>';
+                return;
+            }
+            const inList = myWaitlist[date];
+            box.innerHTML = inList
+                ? `<p class="font-semibold text-amber-400"><i class="fa-solid fa-hourglass-half mr-2"></i>Você está na lista de espera de ${escapeHtml(formatBR(date))}</p>
+                   <p class="text-sm text-zinc-400 mt-1">Se abrir um horário, o André te chama no WhatsApp.</p>
+                   <button type="button" id="waitlistBtn" class="mt-3 text-sm text-zinc-300 hover:text-white underline">Sair da lista de espera</button>`
+                : `<p class="font-semibold"><i class="fa-solid fa-calendar-xmark mr-2 text-amber-500"></i>Este dia está lotado</p>
+                   <p class="text-sm text-zinc-400 mt-1">Entre na lista de espera: se alguém cancelar, o André te avisa no WhatsApp.</p>
+                   <button type="button" id="waitlistBtn" class="mt-3 bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold text-sm transition">Entrar na lista de espera</button>`;
+            document.getElementById('waitlistBtn').onclick = () => toggleWaitlist(date, !inList);
+        }
+
+        async function toggleWaitlist(date, join) {
+            if (!currentClient) { openAccountModal('client'); return; }
+            if (join && !requireVerified()) return;
+            const ref = db.ref(`waitlist/${date}/${currentClient.phoneKey}`);
+            try {
+                if (join) await ref.set({ name: currentClient.name, uid: currentClient.uid, createdAt: new Date().toISOString() });
+                else await ref.remove();
+                myWaitlist[date] = join;
+                renderWaitlistBox(date);
+            } catch (e) {
+                console.error('Lista de espera:', e);
+                alert('Não foi possível atualizar a lista de espera. Tente de novo.');
+            }
         }
 
         function selectTime(time, element) {
@@ -734,6 +816,10 @@
                     name, phone, phoneKey: currentClient.phoneKey, service, date, time,
                     status: 'active', email: currentClient.email
                 }).then(() => {
+                    if (myWaitlist[date]) {
+                        db.ref(`waitlist/${date}/${currentClient.phoneKey}`).remove().catch(() => {});
+                        myWaitlist[date] = false;
+                    }
                     alert(`✅ Agendamento confirmado!\n\nNome: ${name}\nServiço: ${service}\nData: ${date}\nHorário: ${time}\n\nPara avisar o André, toque em "Confirmar no WhatsApp" em Minha Conta.`);
                     document.getElementById('bookingForm').reset();
                     document.getElementById('bookingDate').value = date;
@@ -825,6 +911,8 @@
             myAppointments = [];
             myHistory = [];
             myCancelled = [];
+            myRedeemedCount = 0;
+            Object.keys(myWaitlist).forEach(k => delete myWaitlist[k]);
             subscribedKey = key;
             if (!key) return;
             [
@@ -842,6 +930,10 @@
                 q.on('value', cb);
                 clientSubs.push({ q, cb });
             });
+            const loyaltyQ = db.ref(`loyalty/${key}/redeemed`);
+            const loyaltyCb = snap => { myRedeemedCount = snap.numChildren(); renderProfile(); };
+            loyaltyQ.on('value', loyaltyCb, () => {});
+            clientSubs.push({ q: loyaltyQ, cb: loyaltyCb });
         }
 
         function updateAccountUI() {
@@ -1139,6 +1231,16 @@
             $('profStatVisits').textContent = completed.length;
             $('profStatNext').textContent = upcoming.length ? `${upcoming[0].date.split('-').reverse().slice(0, 2).join('/')} às ${upcoming[0].time}` : '—';
             $('profStatSpent').textContent = formatMoney(completed.reduce((s, a) => s + spent(a), 0));
+
+            // Fidelidade: a cada N cortes atendidos (contados a partir do início do programa), 1 grátis.
+            const loyal = CheresAttendance.loyaltyStatus(past, myRedeemedCount, loyaltyCfg);
+            $('profLoyaltyCount').textContent = `${loyal.progress} de ${loyal.every} cortes`;
+            $('profLoyaltyFill').style.width = `${Math.round((loyal.progress / loyal.every) * 100)}%`;
+            $('profLoyaltyBar').setAttribute('aria-valuemax', String(loyal.every));
+            $('profLoyaltyBar').setAttribute('aria-valuenow', String(loyal.progress));
+            $('profLoyaltyText').textContent = loyal.available
+                ? `Você tem ${loyal.available} corte${loyal.available === 1 ? '' : 's'} grátis! É só avisar o André no próximo atendimento.`
+                : `Faltam ${loyal.remaining} corte${loyal.remaining === 1 ? '' : 's'} para o seu corte grátis. A cada ${loyal.every} cortes, 1 é por nossa conta.`;
 
             $('profUpcoming').innerHTML = upcoming.length ? upcoming.map(a => `
                 <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 flex flex-col gap-3">
