@@ -63,6 +63,76 @@
         return [iso(new Date(d.getFullYear(), d.getMonth(), 1)), iso(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
     }
 
+    function addDays(date, n) {
+        var d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() + n);
+        return iso(d);
+    }
+
+    // Atalhos do filtro de período. Devolve [de, até] (inclusive) ou null se o atalho não existir.
+    function presetRange(preset, today) {
+        switch (preset) {
+            case 'today': return [today, today];
+            case 'yesterday': { var y = addDays(today, -1); return [y, y]; }
+            case 'week': return weekRange(today);
+            case 'lastweek': return weekRange(addDays(today, -7));
+            case 'month': return monthRange(today);
+            case 'lastmonth': return monthRange(addDays(monthRange(today)[0], -1));
+            default: return null;
+        }
+    }
+
+    // Dia da despesa: campo "date" (novas) ou o dia local em que foi criada (antigas) ou o 1º do mês.
+    function expenseDate(e, monthKey) {
+        if (e && typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date)) return e.date;
+        if (e && e.createdAt) {
+            var d = new Date(e.createdAt);
+            if (!isNaN(d.getTime())) {
+                var local = iso(d);
+                if (local.slice(0, 7) === monthKey) return local;
+            }
+        }
+        return monthKey + '-01';
+    }
+
+    // Despesas (expenses = { "AAAA-MM": { id: {...} } }) dentro de [from, to], já com a data e a chave.
+    function expensesInRange(expenses, from, to) {
+        var out = [];
+        Object.keys(expenses || {}).forEach(function (month) {
+            if (month + '-31' < from || month + '-01' > to) return;
+            var items = expenses[month] || {};
+            Object.keys(items).forEach(function (id) {
+                var e = items[id];
+                if (!e || typeof e.amount !== 'number') return;
+                var date = expenseDate(e, month);
+                if (date >= from && date <= to) out.push({ id: id, month: month, date: date, label: e.label || '', amount: e.amount });
+            });
+        });
+        return out.sort(function (a, b) { return b.date.localeCompare(a.date); });
+    }
+
+    // Totais por dia do período (todos os dias, inclusive os sem faturamento).
+    function dailySeries(entries, from, to) {
+        var map = {};
+        entries.forEach(function (e) { if (e.date >= from && e.date <= to) map[e.date] = (map[e.date] || 0) + e.amount; });
+        var days = [], values = [];
+        for (var d = from, i = 0; d <= to && i < 400; d = addDays(d, 1), i++) { days.push(d); values.push(Math.round((map[d] || 0) * 100) / 100); }
+        return { days: days, values: values };
+    }
+
+    // Serviço mais vendido (por quantidade) e clientes distintos atendidos no período.
+    function periodHighlights(entries, from, to) {
+        var count = {}, clients = {};
+        entries.forEach(function (e) {
+            if (e.date < from || e.date > to) return;
+            count[e.service] = (count[e.service] || 0) + 1;
+            var key = String(e.phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '') || ('nome:' + e.name);
+            clients[key] = true;
+        });
+        var top = Object.keys(count).sort(function (a, b) { return count[b] - count[a] || a.localeCompare(b); })[0] || '';
+        return { topService: top, topCount: top ? count[top] : 0, uniqueClients: Object.keys(clients).length };
+    }
+
     // ---- CSV (abre no Excel brasileiro: separador ";" e BOM para os acentos) ----
     function csvCell(value) {
         var s = value == null ? '' : String(value);
@@ -82,6 +152,12 @@
         sumExpenses: sumExpenses,
         weekRange: weekRange,
         monthRange: monthRange,
+        addDays: addDays,
+        presetRange: presetRange,
+        expenseDate: expenseDate,
+        expensesInRange: expensesInRange,
+        dailySeries: dailySeries,
+        periodHighlights: periodHighlights,
         csvCell: csvCell,
         toCsv: toCsv,
         csvNumber: csvNumber

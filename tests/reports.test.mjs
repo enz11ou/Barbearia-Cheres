@@ -83,6 +83,50 @@ describe('financeiro', () => {
     });
 });
 
+describe('filtro de período', () => {
+    const today = '2026-11-20';   // sexta-feira
+    test('atalhos', () => {
+        assert.deepEqual(plain(R.presetRange('today', today)), ['2026-11-20', '2026-11-20']);
+        assert.deepEqual(plain(R.presetRange('yesterday', today)), ['2026-11-19', '2026-11-19']);
+        assert.deepEqual(plain(R.presetRange('week', today)), ['2026-11-15', '2026-11-21']);
+        assert.deepEqual(plain(R.presetRange('lastweek', today)), ['2026-11-08', '2026-11-14']);
+        assert.deepEqual(plain(R.presetRange('month', today)), ['2026-11-01', '2026-11-30']);
+        assert.deepEqual(plain(R.presetRange('lastmonth', today)), ['2026-10-01', '2026-10-31']);
+        assert.deepEqual(plain(R.presetRange('lastmonth', '2027-01-10')), ['2026-12-01', '2026-12-31'], 'virada de ano');
+        assert.equal(R.presetRange('custom', today), null);
+    });
+    test('despesas por dia: campo date, criação (antigas) ou 1º do mês', () => {
+        assert.equal(R.expenseDate({ date: '2026-11-12' }, '2026-11'), '2026-11-12');
+        assert.equal(R.expenseDate({ createdAt: '2026-11-05T15:00:00' }, '2026-11'), '2026-11-05');
+        assert.equal(R.expenseDate({ createdAt: '2026-12-02T10:00:00' }, '2026-11'), '2026-11-01', 'criada em outro mês: usa o 1º do mês');
+        assert.equal(R.expenseDate({}, '2026-11'), '2026-11-01');
+    });
+    test('despesas dentro do período', () => {
+        const exp = {
+            '2026-10': { a: { label: 'Out', amount: 50, date: '2026-10-31' } },
+            '2026-11': { b: { label: 'Aluguel', amount: 800, date: '2026-11-05' }, c: { label: 'Produtos', amount: 100, date: '2026-11-15' }, d: null }
+        };
+        const list = R.expensesInRange(exp, '2026-11-10', '2026-11-20');
+        assert.deepEqual(plain(list.map(e => e.label)), ['Produtos']);
+        assert.equal(R.expensesInRange(exp, '2026-10-01', '2026-11-30').reduce((s, e) => s + e.amount, 0), 950);
+    });
+    test('faturamento por dia, com dias zerados', () => {
+        const s = R.dailySeries([{ date: '2026-11-02', amount: 30 }, { date: '2026-11-02', amount: 20 }, { date: '2026-11-04', amount: 35 }], '2026-11-01', '2026-11-04');
+        assert.deepEqual(plain(s.days), ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04']);
+        assert.deepEqual(plain(s.values), [0, 50, 0, 35]);
+    });
+    test('destaques do período: serviço mais vendido e clientes distintos', () => {
+        const e = [
+            { date: '2026-11-02', service: 'Corte', phone: '(21) 98888-7777', name: 'João' },
+            { date: '2026-11-03', service: 'Corte', phone: '21988887777', name: 'João' },
+            { date: '2026-11-03', service: 'Barba', phone: '(21) 97777-6666', name: 'Pedro' },
+            { date: '2026-12-01', service: 'Barba', phone: '1', name: 'X' }
+        ];
+        const h = R.periodHighlights(e, '2026-11-01', '2026-11-30');
+        assert.equal(h.topService, 'Corte'); assert.equal(h.topCount, 2); assert.equal(h.uniqueClients, 2);
+    });
+});
+
 describe('CSV', () => {
     test('separador ; e acentos (BOM)', () => {
         const csv = R.toCsv(['Nome', 'Valor'], [['João', R.csvNumber(35)]]);

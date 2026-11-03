@@ -98,6 +98,7 @@
           "label": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
           "amount": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000" },
           "category": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "date": { ".validate": "newData.isString() && newData.val().matches(/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/) && newData.val().beginsWith($month)" },
           "createdAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
           "$other": { ".validate": false }
         }
