@@ -441,3 +441,12 @@ describe('gestão do negócio (fase 4A)', () => {
         await assertFails(set(ref(andre(), 'waitlist/20-11-2026/21922222222'), entry(BOB)));
     });
 });
+
+describe('correções da revisão (fase 4A)', () => {
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    test('cliente não apaga o "avisado" regravando a própria vaga, mas pode sair da lista', async () => {
+        await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database(), `waitlist/2026-11-20/${ALICE.phone}`), { name: 'Alice', uid: ALICE.uid, createdAt: 'x', notifiedAt: 'y' }));
+        await assertFails(set(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`), { name: 'Alice', uid: ALICE.uid, createdAt: 'z' }));
+        await assertSucceeds(remove(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`)));
+    });
+});

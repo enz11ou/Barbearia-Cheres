@@ -701,10 +701,29 @@
 
         // ============ LISTA DE ESPERA ============
         // Dia lotado = aberto, com horários ainda por vir, mas nenhum livre.
+        // Só conta como lotado se há horários ocupados por clientes (dia todo bloqueado pelo barbeiro não é "lotado").
         function isDayFull(date) {
             const day = getDaySlots(date);
             if (day.closedMessage || !day.slots.length) return false;
-            return day.slots.some(s => s.state !== 'past') && !day.slots.some(s => s.state === 'free');
+            const upcoming = day.slots.filter(s => s.state !== 'past');
+            return upcoming.some(s => s.state === 'booked') && !upcoming.some(s => s.state === 'free');
+        }
+
+        // Acompanha em tempo real a vaga do cliente na lista de espera do dia escolhido.
+        let waitlistWatch = null;
+        function watchMyWaitlist(date) {
+            const key = currentClient ? `${date}/${currentClient.phoneKey}` : null;
+            if (waitlistWatch && waitlistWatch.key === key) return;
+            if (waitlistWatch) waitlistWatch.ref.off('value', waitlistWatch.cb);
+            waitlistWatch = null;
+            if (!key) return;
+            const ref = db.ref(`waitlist/${key}`);
+            const cb = snap => {
+                myWaitlist[date] = snap.exists();
+                if (document.getElementById('bookingDate').value === date) renderWaitlistBox(date);
+            };
+            ref.on('value', cb, () => { myWaitlist[date] = false; });
+            waitlistWatch = { key, ref, cb };
         }
 
         function renderWaitlistBox(date) {
@@ -712,13 +731,9 @@
             if (!box) return;
             if (!date || !currentClient || !isDayFull(date)) { box.classList.add('hidden'); return; }
             box.classList.remove('hidden');
-            const pk = currentClient.phoneKey;
+            watchMyWaitlist(date);
             if (myWaitlist[date] === undefined) {
                 box.innerHTML = '<p class="text-sm text-zinc-400">Verificando a lista de espera…</p>';
-                db.ref(`waitlist/${date}/${pk}`).once('value')
-                    .then(snap => { myWaitlist[date] = snap.exists(); })
-                    .catch(() => { myWaitlist[date] = false; })
-                    .then(() => { if (document.getElementById('bookingDate').value === date) renderWaitlistBox(date); });
                 return;
             }
             const inList = myWaitlist[date];
@@ -801,6 +816,10 @@
                     name, phone, phoneKey: currentClient.phoneKey, service, date, time,
                     status: 'active', email: currentClient.email
                 }).then(() => {
+                    if (myWaitlist[date]) {
+                        db.ref(`waitlist/${date}/${currentClient.phoneKey}`).remove().catch(() => {});
+                        myWaitlist[date] = false;
+                    }
                     alert(`✅ Agendamento confirmado!\n\nNome: ${name}\nServiço: ${service}\nData: ${date}\nHorário: ${time}\n\nPara avisar o André, toque em "Confirmar no WhatsApp" em Minha Conta.`);
                     document.getElementById('bookingForm').reset();
                     document.getElementById('bookingDate').value = date;

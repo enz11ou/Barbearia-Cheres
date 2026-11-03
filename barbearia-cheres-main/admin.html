@@ -1179,7 +1179,8 @@
             const [from] = CheresReports.weekRange(localToday());
             const entries = financeEntries();
             const days = Array.from({ length: 7 }, (_, i) => addDaysISO(from, i));
-            const values = days.map(d => CheresReports.summarize(entries, d, d).total);
+            const byDay = dailyTotals(entries);
+            const values = days.map(d => byDay[d] || 0);
             if (weekChart) weekChart.destroy();
             const ctx = document.getElementById('weekChart');
             if (!ctx) return;
@@ -1197,7 +1198,8 @@
             const entries = financeEntries();
             const days = [];
             for (let d = from; d <= to; d = addDaysISO(d, 1)) days.push(d);
-            const values = days.map(d => CheresReports.summarize(entries, d, d).total);
+            const byDay = dailyTotals(entries);
+            const values = days.map(d => byDay[d] || 0);
             if (monthChart) monthChart.destroy();
             const ctx = document.getElementById('monthChart');
             if (!ctx) return;
@@ -1457,7 +1459,7 @@
             refreshNameList();
             renderRecencySummary();
             const open = document.getElementById('crmDetail');
-            if (open && !open.classList.contains('hidden') && open.dataset.phone) showCRMDetail(open.dataset.phone, true);
+            if (open && !open.classList.contains('hidden') && open.dataset.phone) refreshCrmDetail();
             renderAdminAppointments();
         }
 
@@ -1598,6 +1600,7 @@
                         <tbody>${rows || '<tr><td colspan="5" class="py-4 px-4 text-zinc-400">Ainda não há atendimentos para este cliente.</td></tr>'}</tbody>
                     </table>
                 </div>`;
+            bindClientExtras(detail, client.phoneKey);
             detail.classList.remove('hidden');
             if (!keepScroll) detail.scrollIntoView({ behavior: 'smooth' });
         }
@@ -2954,8 +2957,18 @@
 
         // ============ FINANCEIRO ============
         // Fonte única: atendimentos marcados (valor pago) + histórico antigo (preço de tabela). Ver reports.js.
+        // Cache: só recalcula quando chega uma leitura nova de appointments/appointmentHistory (as listas são recriadas).
+        let financeCache = { a: null, h: null, entries: [] };
         function financeEntries() {
-            return CheresReports.attendedEntries(appointments, appointmentHistory, servicePrices, isTimePast);
+            if (financeCache.a !== appointments || financeCache.h !== appointmentHistory) {
+                financeCache = { a: appointments, h: appointmentHistory, entries: CheresReports.attendedEntries(appointments, appointmentHistory, servicePrices, isTimePast) };
+            }
+            return financeCache.entries;
+        }
+        function dailyTotals(entries) {
+            const map = {};
+            entries.forEach(e => { map[e.date] = Math.round(((map[e.date] || 0) + e.amount) * 100) / 100; });
+            return map;
         }
 
         const METHOD_STYLE = { pix: ['Pix', 'bg-emerald-500'], cash: ['Dinheiro', 'bg-amber-500'], card: ['Cartão', 'bg-blue-500'], unknown: ['Não informado', 'bg-zinc-500'] };
@@ -2974,7 +2987,7 @@
             put('finMonthTotal', money(m.total)); put('finMonthCount', count(m.count));
 
             const monthInput = document.getElementById('finMonth');
-            if (!monthInput.value) monthInput.value = today.slice(0, 7);
+            if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(monthInput.value)) monthInput.value = today.slice(0, 7);
             const month = monthInput.value;
             const sel = CheresReports.summarize(entries, ...CheresReports.monthRange(month + '-01'));
             const monthExpenses = expenses[month] || {};
@@ -3008,7 +3021,7 @@
                 row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl px-3 py-2';
                 row.innerHTML = `<span class="min-w-0 truncate">${escapeHtml(e.label)}</span>
                     <span class="flex items-center gap-2 shrink-0"><span class="text-red-300">${money(e.amount)}</span>
-                    <button type="button" class="text-zinc-400 hover:text-red-400 w-8 h-8" aria-label="Excluir despesa ${escapeHtml(e.label)}"><i class="fa-solid fa-trash"></i></button></span>`;
+                    <button type="button" class="text-zinc-400 hover:text-red-400 w-11 h-11" aria-label="Excluir despesa ${escapeHtml(e.label)}"><i class="fa-solid fa-trash"></i></button></span>`;
                 row.querySelector('button').onclick = () => removeExpense(month, k, e);
                 list.appendChild(row);
             });
@@ -3047,20 +3060,23 @@
         }
 
         function clientExtrasHtml(client) {
+            if (!/^\d{10,11}$/.test(client.phoneKey)) {
+                return `<p class="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-6"><i class="fa-solid fa-triangle-exclamation mr-1"></i>O telefone deste cliente está fora do padrão (DDD + número). Corrija o cadastro para usar anotações e fidelidade.</p>`;
+            }
             const note = clientNotes[client.phoneKey] || {};
             const loyal = loyaltyFor(client);
             const used = Object.entries(loyal.redeemed).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)));
             const pct = Math.round((loyal.progress / loyal.every) * 100);
             return `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                    <form onsubmit="event.preventDefault(); saveClientNotes('${client.phoneKey}');" class="bg-zinc-900 rounded-xl p-4">
+                    <form class="cn-form bg-zinc-900 rounded-xl p-4">
                         <p class="text-sm font-semibold text-zinc-300 mb-2"><i class="fa-solid fa-note-sticky mr-1 text-amber-400"></i>Anotações (só você vê)</p>
                         <label for="cnNotes" class="sr-only">Anotações sobre o cliente</label>
-                        <textarea id="cnNotes" maxlength="1000" rows="3" placeholder="Ex.: máquina 2 nas laterais, degradê baixo" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">${escapeHtml(note.notes || '')}</textarea>
+                        <textarea id="cnNotes" oninput="crmNotesDirty = true" maxlength="1000" rows="3" placeholder="Ex.: máquina 2 nas laterais, degradê baixo" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">${escapeHtml(note.notes || '')}</textarea>
                         <div class="flex items-end gap-3 mt-2">
                             <div>
                                 <label for="cnBirthday" class="block text-xs text-zinc-400 mb-1">Aniversário (dia/mês)</label>
-                                <input id="cnBirthday" inputmode="numeric" maxlength="5" placeholder="DD/MM" value="${escapeHtml(birthdayText(note.birthday))}" class="w-28 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+                                <input id="cnBirthday" oninput="crmNotesDirty = true" inputmode="numeric" maxlength="5" placeholder="DD/MM" value="${escapeHtml(birthdayText(note.birthday))}" class="w-28 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
                             </div>
                             <button type="submit" class="ml-auto bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-xl text-sm font-bold transition">Salvar</button>
                         </div>
@@ -3073,21 +3089,36 @@
                         <div class="h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-2" role="progressbar" aria-label="Cortes rumo ao brinde" aria-valuemin="0" aria-valuemax="${loyal.every}" aria-valuenow="${loyal.progress}"><div class="h-full bg-amber-500 rounded-full" style="width:${pct}%"></div></div>
                         <p class="text-xs text-zinc-400 mb-3">${loyal.cuts} corte${loyal.cuts === 1 ? '' : 's'} desde ${formatDateBR(loyal.since)} · ${loyal.used} brinde${loyal.used === 1 ? '' : 's'} usado${loyal.used === 1 ? '' : 's'}</p>
                         ${loyal.available
-                            ? `<button type="button" onclick="redeemReward('${client.phoneKey}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-gift mr-1"></i>Usar brinde (${loyal.available} disponível${loyal.available === 1 ? '' : 'is'})</button>`
+                            ? `<button type="button" class="cn-redeem w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-gift mr-1"></i>Usar brinde (${loyal.available} disponível${loyal.available === 1 ? '' : 'is'})</button>`
                             : `<p class="text-xs text-zinc-500">Faltam ${loyal.remaining} corte${loyal.remaining === 1 ? '' : 's'} para o próximo brinde.</p>`}
                         ${used.length ? `<ul class="mt-3 space-y-1 text-xs text-zinc-400">${used.slice(0, 5).map(([id, r]) => `
                             <li class="flex items-center justify-between gap-2"><span>Brinde usado em ${escapeHtml(formatDateBR(r.date))}</span>
-                            <button type="button" onclick="undoReward('${client.phoneKey}', '${escapeHtml(id)}')" class="text-zinc-500 hover:text-red-400 underline">desfazer</button></li>`).join('')}</ul>` : ''}
+                            <button type="button" class="cn-undo text-zinc-500 hover:text-red-400 underline px-2 py-1" data-id="${escapeHtml(id)}">desfazer</button></li>`).join('')}</ul>` : ''}
                     </div>
                 </div>`;
         }
 
+        function bindClientExtras(root, phoneKey) {
+            const form = root.querySelector('.cn-form');
+            if (form) form.onsubmit = e => { e.preventDefault(); saveClientNotes(phoneKey); };
+            const redeem = root.querySelector('.cn-redeem');
+            if (redeem) redeem.onclick = () => redeemReward(phoneKey);
+            root.querySelectorAll('.cn-undo').forEach(b => { b.onclick = () => undoReward(phoneKey, b.dataset.id); });
+        }
+
+        // Redesenha a ficha aberta sem perder anotação digitada e ainda não salva.
+        let crmNotesDirty = false;
         function refreshCrmDetail() {
             const detail = document.getElementById('crmDetail');
-            if (detail && !detail.classList.contains('hidden') && detail.dataset.phone) {
-                // não redesenha enquanto o barbeiro digita a anotação
-                if (document.activeElement && ['cnNotes', 'cnBirthday'].includes(document.activeElement.id)) return;
-                showCRMDetail(detail.dataset.phone, true);
+            if (!detail || detail.classList.contains('hidden') || !detail.dataset.phone) return;
+            if (document.activeElement && ['cnNotes', 'cnBirthday'].includes(document.activeElement.id)) return;
+            const notesEl = document.getElementById('cnNotes'), bdayEl = document.getElementById('cnBirthday');
+            const draft = crmNotesDirty && notesEl && bdayEl ? { notes: notesEl.value, bday: bdayEl.value, phone: detail.dataset.phone } : null;
+            showCRMDetail(detail.dataset.phone, true);
+            if (draft && draft.phone === detail.dataset.phone) {
+                const n = document.getElementById('cnNotes'), b = document.getElementById('cnBirthday');
+                if (n) n.value = draft.notes;
+                if (b) b.value = draft.bday;
             }
         }
 
@@ -3108,6 +3139,7 @@
             try {
                 if (Object.keys(value).length) await clientNotesRef.child(phoneKey).set({ ...value, updatedAt: new Date().toISOString() });
                 else await clientNotesRef.child(phoneKey).remove();
+                crmNotesDirty = false;
                 document.activeElement && document.activeElement.blur && document.activeElement.blur();
                 showToast({ title: 'Ficha salva', body: 'Anotações e aniversário atualizados.', kind: 'ok' });
                 refreshCrmDetail();
@@ -3198,12 +3230,32 @@
         function renderWaitlistAdmin(date) {
             const box = document.getElementById('waitlistAdminBox');
             if (!box) return;
+            box.querySelectorAll('.order-last').forEach(el => el.remove());
+            const today = localToday();
             const entries = date ? Object.entries(waitlist[date] || {}) : [];
-            box.classList.toggle('hidden', !entries.length);
-            if (!entries.length) return;
-            document.getElementById('waitlistAdminCount').textContent = entries.length;
+            const otherDates = Object.keys(waitlist).filter(d => d >= today && d !== date && Object.keys(waitlist[d] || {}).length).sort();
+            box.classList.toggle('hidden', !entries.length && !otherDates.length);
+            if (!entries.length && !otherDates.length) return;
+            document.getElementById('waitlistAdminCount').textContent = entries.length || '';
+            document.getElementById('waitlistAdminCount').classList.toggle('hidden', !entries.length);
             const list = document.getElementById('waitlistAdminList');
-            list.innerHTML = '';
+            list.innerHTML = entries.length ? '' : `<p class="text-sm text-zinc-400">Ninguém esperando ${date ? 'neste dia' : 'nesta visão'}.</p>`;
+            if (otherDates.length) {
+                const wrap = document.createElement('div');
+                wrap.className = 'flex flex-wrap items-center gap-2 pt-1 order-last';
+                wrap.innerHTML = `<span class="text-xs text-zinc-400">${entries.length ? 'Outros dias:' : 'Dias com lista de espera:'}</span>`;
+                otherDates.forEach(d => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'text-xs font-semibold px-3 py-2 rounded-full bg-zinc-800 border border-zinc-700 hover:border-amber-500';
+                    b.textContent = `${dayLabel(d)} (${Object.keys(waitlist[d]).length})`;
+                    b.setAttribute('aria-label', `Ver lista de espera de ${formatDateBR(d)}`);
+                    b.onclick = () => pickDay(d === today ? 'today' : d);
+                    wrap.appendChild(b);
+                });
+                box.appendChild(wrap);
+                box.dataset.extra = '1';
+            }
             entries.sort((a, b) => String(a[1].createdAt).localeCompare(String(b[1].createdAt))).forEach(([pk, e]) => {
                 const first = firstNameOf(e.name);
                 const msg = `Oi${first ? ', ' + first : ''}! Abriu um horário no dia ${formatDateBR(date)} na Barbearia Cheres. Se ainda quiser, é só agendar pelo site: ${window.location.origin}/ — ${BARBER_NAME}`;
@@ -3224,7 +3276,7 @@
                 });
                 const del = document.createElement('button');
                 del.type = 'button';
-                del.className = 'shrink-0 text-zinc-400 hover:text-red-400 w-9 h-9';
+                del.className = 'shrink-0 text-zinc-400 hover:text-red-400 w-11 h-11';
                 del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                 del.setAttribute('aria-label', `Tirar ${e.name || 'cliente'} da lista de espera`);
                 del.onclick = () => { if (confirm(`Tirar ${e.name || 'este cliente'} da lista de espera de ${formatDateBR(date)}?`)) waitlistRef.child(`${date}/${pk}`).remove().catch(failSave); };

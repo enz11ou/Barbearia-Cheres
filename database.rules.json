@@ -128,7 +128,7 @@
         "$phoneKey": {
           ".read": "auth != null && root.child('clients').child($phoneKey).child('uid').val() === auth.uid",
           ".write": "auth != null && root.child('clients').child($phoneKey).child('uid').val() === auth.uid && (!newData.exists() || (auth.token.email_verified === true || root.child('verifiedExempt').child(auth.uid).exists()))",
-          ".validate": "$phoneKey.matches(/^[0-9]{10,11}$/) && newData.hasChildren(['name', 'uid', 'createdAt']) && (root.child('admins').child(auth.uid).exists() || newData.child('uid').val() === auth.uid)",
+          ".validate": "$phoneKey.matches(/^[0-9]{10,11}$/) && newData.hasChildren(['name', 'uid', 'createdAt']) && (root.child('admins').child(auth.uid).exists() || (newData.child('uid').val() === auth.uid && (!data.child('notifiedAt').exists() || newData.child('notifiedAt').val() === data.child('notifiedAt').val())))",
           "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
           "uid": { ".validate": "newData.isString() && newData.val().length <= 128" },
           "createdAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
