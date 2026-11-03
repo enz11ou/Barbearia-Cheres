@@ -32,7 +32,43 @@
       ".read": true,
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
       "$slot": {
-        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && (auth.token.email_verified === true || root.child('verifiedExempt').child(auth.uid).exists()) && $slot.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}_(09|1[0-8])(00|30)$/)) || (!newData.exists() && (data.val() === auth.uid || data.val() === true)))"
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && (auth.token.email_verified === true || root.child('verifiedExempt').child(auth.uid).exists()) && $slot.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}_([01][0-9]|2[0-3])(00|30)$/)) || (!newData.exists() && (data.val() === auth.uid || data.val() === true)))"
+      }
+    },
+
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".validate": "newData.hasChildren()",
+      "schedule": {
+        ".validate": "newData.hasChildren()",
+        "days": {
+          ".validate": "newData.hasChildren()",
+          "$dow": {
+            ".validate": "$dow.matches(/^[0-6]$/) && newData.child('open').isBoolean() && (newData.child('open').val() === false || newData.child('times').hasChildren())",
+            "open": { ".validate": "newData.isBoolean()" },
+            "times": {
+              "$t": { ".validate": "$t.matches(/^([01][0-9]|2[0-3])(00|30)$/) && newData.val() === true" }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      },
+      "$other": { ".validate": false }
+    },
+
+    "scheduleExceptions": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".validate": "newData.hasChildren()",
+      "$date": {
+        ".validate": "$date.matches(/^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/) && ((newData.child('closed').val() === true && !newData.child('times').exists()) || (!newData.child('closed').exists() && newData.child('times').hasChildren()))",
+        "closed": { ".validate": "newData.val() === true" },
+        "times": {
+          "$t": { ".validate": "$t.matches(/^([01][0-9]|2[0-3])(00|30)$/) && newData.val() === true" }
+        },
+        "$other": { ".validate": false }
       }
     },
 

@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="schedule.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -179,6 +180,9 @@
                 </button>
                 <button onclick="switchDashboardTab('appointments')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
                     <i class="fa-solid fa-calendar-check"></i> Agendamentos
+                </button>
+                <button onclick="switchDashboardTab('schedule')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-clock"></i> Horários
                 </button>
                 <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-4 py-2 font-semibold text-lg flex items-center gap-2">
                     <i class="fa-solid fa-chart-pie"></i> Analytics
@@ -416,6 +420,72 @@
                 </div>
             </div>
 
+            <!-- TAB: HORÁRIOS DE FUNCIONAMENTO -->
+            <div id="tab-schedule" class="dashboard-content hidden">
+                <div class="space-y-6">
+                    <section class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800" aria-labelledby="weekTitle">
+                        <h3 id="weekTitle" class="text-xl font-bold mb-2 text-amber-500"><i class="fa-solid fa-calendar-week mr-2"></i>Semana padrão</h3>
+                        <p class="text-zinc-400 text-sm mb-4">Os horários de cada dia da semana, válidos para todas as semanas. Toque em um dia para ligar, desligar ou adicionar horários.</p>
+                        <div id="weekdayList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+                    </section>
+
+                    <section class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800" aria-labelledby="exTitle">
+                        <h3 id="exTitle" class="text-xl font-bold mb-2 text-amber-500"><i class="fa-solid fa-star mr-2"></i>Dias especiais</h3>
+                        <p class="text-zinc-400 text-sm mb-4">Uma data com horário diferente da semana padrão: véspera de feriado, folga, atender até mais tarde ou abrir numa segunda.</p>
+                        <form onsubmit="event.preventDefault(); openScheduleEditorForDate();" class="flex flex-col sm:flex-row gap-3">
+                            <label for="exDate" class="sr-only">Data</label>
+                            <input type="date" id="exDate" required class="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500">
+                            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-3 rounded-xl font-bold transition whitespace-nowrap">
+                                <i class="fa-solid fa-pen mr-1"></i>Editar esta data
+                            </button>
+                        </form>
+                        <div id="exceptionsList" class="mt-5 space-y-2"></div>
+                    </section>
+
+                    <section class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800" aria-labelledby="rangeTitle">
+                        <h3 id="rangeTitle" class="text-xl font-bold mb-2 text-amber-500"><i class="fa-solid fa-calendar-days mr-2"></i>Várias datas de uma vez</h3>
+                        <p class="text-zinc-400 text-sm mb-4">Para fim de ano, férias ou feriado prolongado. Ex.: de 20/12 a 31/12, das 09:00 às 21:00.</p>
+                        <form onsubmit="event.preventDefault(); applyScheduleRange();" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="rgFrom" class="block text-xs text-zinc-400 mb-1">De</label>
+                                    <input type="date" id="rgFrom" required class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label for="rgTo" class="block text-xs text-zinc-400 mb-1">Até</label>
+                                    <input type="date" id="rgTo" required class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="rgMode" class="block text-xs text-zinc-400 mb-1">O que fazer nessas datas</label>
+                                <select id="rgMode" onchange="onRangeModeChange()" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500">
+                                    <option value="hours">Atender num horário próprio</option>
+                                    <option value="closed">Fechar (férias, feriado)</option>
+                                    <option value="default">Voltar à semana padrão</option>
+                                </select>
+                            </div>
+                            <div id="rgHours" class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="rgFirst" class="block text-xs text-zinc-400 mb-1">Primeiro horário</label>
+                                    <select id="rgFirst" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500"></select>
+                                </div>
+                                <div>
+                                    <label for="rgLast" class="block text-xs text-zinc-400 mb-1">Último horário</label>
+                                    <select id="rgLast" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500"></select>
+                                </div>
+                            </div>
+                            <label id="rgSkipBox" class="flex items-start gap-3 text-sm text-zinc-300">
+                                <input type="checkbox" id="rgSkipClosed" checked class="mt-1 w-4 h-4 accent-amber-500">
+                                <span>Pular os dias em que a barbearia normalmente fecha (ex.: domingo e segunda)</span>
+                            </label>
+                            <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-black px-6 py-3 rounded-xl font-bold transition">
+                                <i class="fa-solid fa-check mr-1"></i>Aplicar nas datas
+                            </button>
+                        </form>
+                    </section>
+                </div>
+            </div>
+
             <!-- TAB: SETTINGS -->
             <div id="tab-settings" class="dashboard-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -442,31 +512,12 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label class="block text-xs text-zinc-400 mb-1">Data</label>
-                                <input type="date" id="blockTimeDate" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
+                                <input type="date" id="blockTimeDate" onchange="refreshBlockTimeOptions()" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
                                 <label class="block text-xs text-zinc-400 mb-1">Horário</label>
                                 <select id="blockTimeSlot" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
-                                    <option value="">Selecione o horário</option>
-                                    <option value="09:00">09:00</option>
-                                    <option value="09:30">09:30</option>
-                                    <option value="10:00">10:00</option>
-                                    <option value="10:30">10:30</option>
-                                    <option value="11:00">11:00</option>
-                                    <option value="11:30">11:30</option>
-                                    <option value="12:00">12:00</option>
-                                    <option value="12:30">12:30</option>
-                                    <option value="13:00">13:00</option>
-                                    <option value="13:30">13:30</option>
-                                    <option value="14:00">14:00</option>
-                                    <option value="14:30">14:30</option>
-                                    <option value="15:00">15:00</option>
-                                    <option value="15:30">15:30</option>
-                                    <option value="16:00">16:00</option>
-                                    <option value="16:30">16:30</option>
-                                    <option value="17:00">17:00</option>
-                                    <option value="17:30">17:30</option>
-                                    <option value="18:00">18:00</option>
+                                    <option value="">Escolha a data primeiro</option>
                                 </select>
                             </div>
                             <div>
@@ -501,16 +552,9 @@
                             <i class="fa-solid fa-clock mr-2"></i>Horário de Funcionamento
                         </h3>
                         <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Horário de Abertura</label>
-                                <input type="time" id="openingTime" value="09:00" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Horário de Fechamento</label>
-                                <input type="time" id="closingTime" value="18:00" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 focus:outline-none focus:border-amber-500">
-                            </div>
-                            <button onclick="saveWorkingHours()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition">
-                                <i class="fa-solid fa-save"></i> Salvar Horário
+                            <p class="text-zinc-400 text-sm">Semana padrão: <span id="settingsWeekSummary" class="text-white font-medium"></span></p>
+                            <button onclick="switchDashboardTab('schedule')" class="w-full bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-xl font-bold transition">
+                                <i class="fa-solid fa-clock"></i> Editar horários
                             </button>
                         </div>
                     </div>
@@ -524,6 +568,72 @@
                             <i class="fa-solid fa-rotate"></i> Sincronizar agora
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDITOR DE HORÁRIOS (dia da semana ou data) -->
+    <div id="scheduleEditor" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="seTitle" onclick="if (event.target === this) closeScheduleEditor()">
+        <div class="bg-zinc-900 border border-zinc-700 w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h3 id="seTitle" class="text-xl font-bold text-amber-500"></h3>
+                    <p id="seSubtitle" class="text-sm text-zinc-400 mt-1"></p>
+                </div>
+                <button type="button" onclick="closeScheduleEditor()" class="text-zinc-400 hover:text-white text-2xl leading-none p-1" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <label class="flex items-center justify-between gap-3 bg-zinc-800 rounded-2xl px-4 py-3 mb-4 cursor-pointer">
+                <span class="font-semibold">Atende neste dia</span>
+                <input type="checkbox" id="seOpen" onchange="editorSetOpen(this.checked)" class="w-6 h-6 accent-amber-500">
+            </label>
+
+            <div id="seBody">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs text-zinc-400">
+                    <span>Toque para ligar ou desligar. <strong id="seCount" class="text-white"></strong></span>
+                    <span class="flex items-center gap-3">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500 inline-block"></span>Atende</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded border border-zinc-600 inline-block"></span>Não atende</span>
+                        <span id="seBookedLegend" class="flex items-center gap-1"><i class="fa-solid fa-user text-sky-400"></i>Agendado</span>
+                    </span>
+                </div>
+                <div id="seGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-5"></div>
+
+                <div class="bg-zinc-800/60 rounded-2xl p-4 space-y-4">
+                    <div>
+                        <p class="text-sm font-semibold mb-2">Faixa de horários</p>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label for="seFrom" class="block text-xs text-zinc-400 mb-1">De</label>
+                                <select id="seFrom" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"></select>
+                            </div>
+                            <div>
+                                <label for="seTo" class="block text-xs text-zinc-400 mb-1">Até</label>
+                                <select id="seTo" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"></select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="editorFill(true)" class="bg-zinc-700 hover:bg-zinc-600 px-3 py-2.5 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-plus mr-1"></i>Ligar faixa</button>
+                            <button type="button" onclick="editorFill(false)" class="bg-zinc-700 hover:bg-zinc-600 px-3 py-2.5 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-minus mr-1"></i>Desligar faixa</button>
+                        </div>
+                        <p class="text-xs text-zinc-500 mt-2">Ex.: almoço de 12:00 até 12:30 → "Desligar faixa".</p>
+                    </div>
+                    <form onsubmit="event.preventDefault(); editorAddTime();" class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label for="seExtra" class="block text-xs text-zinc-400 mb-1">Horário avulso</label>
+                            <select id="seExtra" class="time-select w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500"></select>
+                        </div>
+                        <button type="submit" class="bg-zinc-700 hover:bg-zinc-600 px-4 py-2.5 rounded-xl text-sm font-semibold transition whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i>Adicionar</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 mt-6">
+                <button type="button" id="seResetBtn" onclick="resetScheduleEditor()" class="border border-zinc-600 hover:border-red-500 hover:text-red-400 px-4 py-3 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-rotate-left mr-1"></i>Voltar ao padrão</button>
+                <div class="grid grid-cols-2 sm:flex gap-3">
+                    <button type="button" onclick="closeScheduleEditor()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-3 rounded-xl font-semibold transition">Cancelar</button>
+                    <button type="button" onclick="saveScheduleEditor()" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-3 rounded-xl font-bold transition">Salvar</button>
                 </div>
             </div>
         </div>
@@ -553,8 +663,12 @@
         const cancelledRef = db.ref('cancelledAppointments');
         const contactsRef = db.ref('contacts');   // cadastros feitos pelo barbeiro
         const clientsRef = db.ref('clients');     // contas criadas pelos clientes no site
+        const scheduleRef = db.ref('settings/schedule');           // semana padrão
+        const scheduleExceptionsRef = db.ref('scheduleExceptions'); // datas especiais
 
         // ============ DATA STRUCTURES ============
+        let scheduleSettings = null;   // null = padrão do schedule.js (ter a sáb, 09:00 a 18:00)
+        let scheduleExceptions = {};
         let appointments = [];
         let appointmentHistory = [];
         let blockedDates = [];
@@ -696,6 +810,17 @@
                     blockedTimeSlots.push({ key: child.key, ...child.val() });
                 });
                 renderBlockedTimeSlots();
+                refreshBlockTimeOptions();
+            }, sessionLost);
+
+            scheduleRef.on('value', snapshot => {
+                scheduleSettings = snapshot.val();
+                onScheduleDataChange();
+            }, sessionLost);
+
+            scheduleExceptionsRef.on('value', snapshot => {
+                scheduleExceptions = snapshot.val() || {};
+                onScheduleDataChange();
             }, sessionLost);
 
             clientsRef.on('value', snapshot => {
@@ -1295,10 +1420,11 @@
         }
 
         // ---- Novo agendamento feito pelo barbeiro ----
-        function allTimes() {
-            const times = [];
-            for (let h = 9; h <= 18; h++) { const hh = String(h).padStart(2, '0'); times.push(`${hh}:00`); if (h < 18) times.push(`${hh}:30`); }
-            return times;
+        // Horários que o barbeiro pode escolher numa data: os do dia e, para encaixes, qualquer outro
+        // de 07:00 a 22:30 (marcado como "fora do horário" e com confirmação ao salvar).
+        function barberTimesFor(date) {
+            const day = scheduleDay(date);
+            return { day, times: CheresSchedule.sortTimes([...day.times, ...CheresSchedule.range('07:00', '22:30')]) };
         }
 
         function initNewAppointmentForm() {
@@ -1362,23 +1488,25 @@
             sel.innerHTML = '<option value="">Horário</option>';
             note.textContent = '';
             if (!date) return;
-            const dow = new Date(date + 'T00:00:00').getDay();
+            const { day, times } = barberTimesFor(date);
             const notes = [];
-            if (dow === 0 || dow === 1) notes.push('A barbearia fecha neste dia da semana.');
+            if (!day.open) notes.push(closedDayText(day));
             if (blockedDates.some(b => b.date === date)) notes.push('Esta data está bloqueada.');
             note.textContent = notes.join(' ');
-            allTimes().forEach(time => {
+            times.forEach(time => {
                 const busy = appointments.some(a => a.date === date && a.time === time);
                 const blocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
                 const past = isTimePast(date, time);
-                const tag = busy ? ' — ocupado' : blocked ? ' — bloqueado' : past ? ' — já passou' : '';
+                const outside = day.open && !day.times.includes(time);
+                const tag = busy ? ' — ocupado' : blocked ? ' — bloqueado' : past ? ' — já passou' : outside ? ' — fora do horário' : '';
                 const opt = document.createElement('option');
                 opt.value = time;
                 opt.textContent = time + tag;
                 opt.disabled = busy || blocked || past;
                 sel.appendChild(opt);
             });
-            if (previous && !sel.querySelector(`option[value="${previous}"]`).disabled) sel.value = previous;
+            const prevOpt = previous && sel.querySelector(`option[value="${previous}"]`);
+            if (prevOpt && !prevOpt.disabled) sel.value = previous;
         }
 
         function startAppointmentFor(phoneKey) {
@@ -1404,8 +1532,9 @@
             if (!date || !time) { alert('❌ Escolha a data e o horário.'); return; }
             if (isTimePast(date, time)) { alert('❌ Esse horário já passou.'); return; }
 
-            const dow = new Date(date + 'T00:00:00').getDay();
-            if ((dow === 0 || dow === 1) && !confirm('A barbearia fecha neste dia da semana. Agendar mesmo assim?')) return;
+            const day = scheduleDay(date);
+            if (!day.open && !confirm(`${closedDayText(day)} Agendar mesmo assim?`)) return;
+            if (day.open && !day.times.includes(time) && !confirm(`${time} está fora do horário de atendimento deste dia. Agendar mesmo assim?`)) return;
             if (blockedDates.some(b => b.date === date) && !confirm('Esta data está bloqueada. Agendar mesmo assim?')) return;
             if (appointments.some(a => a.date === date && a.time === time)) {
                 alert('Este horário já está ocupado.');
@@ -1594,12 +1723,374 @@
             });
         }
 
-        // ============ WORKING HOURS ============
-        function saveWorkingHours() {
-            const opening = document.getElementById('openingTime').value;
-            const closing = document.getElementById('closingTime').value;
-            alert(`✅ Horário atualizado!\nAbertura: ${opening}\nFechamento: ${closing}`);
+        // ============ HORÁRIO DE FUNCIONAMENTO ============
+        // A regra que gera os horários fica em schedule.js (a mesma usada no site dos clientes).
+        const ALL_TIMES = CheresSchedule.range('00:00', '23:30');
+        const EDITOR_BASE_TIMES = CheresSchedule.range('07:00', '22:30');   // grade sempre visível no editor
+        const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];                           // começa na segunda
+        let scheduleEditor = null;   // { kind: 'weekday' | 'date', dow, date, open, times: Set }
+        let scheduleEditorOpener = null;   // elemento que abriu o editor (o foco volta para ele)
+
+        function scheduleDay(date) {
+            return CheresSchedule.forDate(date, scheduleSettings, scheduleExceptions);
         }
+
+        function closedDayText(day) {
+            return day.source === 'exception' ? 'A barbearia não atende nesta data.' : 'A barbearia fecha neste dia da semana.';
+        }
+
+        function weekdayLabel(date) {
+            return CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(date)].toLowerCase();
+        }
+
+        function summarizeDay(day) {
+            if (!day.open) return 'Fechado';
+            const first = day.times[0], last = day.times[day.times.length - 1];
+            const continuous = CheresSchedule.range(first, last).length === day.times.length;
+            const n = day.times.length;
+            return `${first} às ${last} · ${n} horário${n === 1 ? '' : 's'}${continuous ? '' : ' (com pausa)'}`;
+        }
+
+        function fillTimeSelects() {
+            const options = ALL_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
+            document.querySelectorAll('.time-select').forEach(sel => {
+                if (sel.options.length) return;
+                sel.innerHTML = options;
+            });
+            const set = (id, v) => { const el = document.getElementById(id); if (el && !el.dataset.ready) { el.value = v; el.dataset.ready = '1'; } };
+            set('rgFirst', '09:00'); set('rgLast', '21:00');
+            set('seFrom', '12:00'); set('seTo', '12:30');
+            set('seExtra', '19:00');
+            const min = localToday();
+            ['exDate', 'rgFrom', 'rgTo'].forEach(id => { document.getElementById(id).min = min; });
+        }
+
+        function onScheduleDataChange() {
+            fillTimeSelects();
+            renderWeekdayList();
+            renderExceptionsList();
+            document.getElementById('settingsWeekSummary').textContent =
+                [CheresSchedule.describeOpenDays(scheduleSettings), CheresSchedule.describeHours(scheduleSettings)].filter(Boolean).join(', ');
+            refreshBlockTimeOptions();
+            if (document.getElementById('naDate')) refreshNewAppSlots();
+        }
+
+        function renderWeekdayList() {
+            const box = document.getElementById('weekdayList');
+            box.innerHTML = '';
+            WEEK_ORDER.forEach(dow => {
+                const day = CheresSchedule.weekday(scheduleSettings, dow);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `text-left p-4 rounded-2xl border transition hover:border-amber-500 ${day.open ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-900 border-zinc-800 opacity-80'}`;
+                btn.onclick = () => openScheduleEditor({ kind: 'weekday', dow });
+                btn.innerHTML = `
+                    <span class="flex items-center justify-between gap-2">
+                        <span class="font-bold">${CheresSchedule.DAY_NAMES[dow]}</span>
+                        <span class="text-[11px] px-2 py-0.5 rounded-full ${day.source === 'default' ? 'bg-zinc-700 text-zinc-300' : 'bg-amber-500/20 text-amber-400'}">${day.source === 'default' ? 'Padrão' : 'Personalizado'}</span>
+                    </span>
+                    <span class="block text-sm mt-1 ${day.open ? 'text-zinc-300' : 'text-red-400'}">${escapeHtml(summarizeDay(day))}</span>`;
+                box.appendChild(btn);
+            });
+        }
+
+        function renderExceptionsList() {
+            const box = document.getElementById('exceptionsList');
+            const today = localToday();
+            const dates = Object.keys(scheduleExceptions).filter(d => d >= today).sort();
+            if (!dates.length) {
+                box.innerHTML = '<p class="text-zinc-500 text-sm">Nenhum dia especial cadastrado.</p>';
+                return;
+            }
+            box.innerHTML = '';
+            dates.forEach(date => {
+                const day = CheresSchedule.forDate(date, scheduleSettings, scheduleExceptions);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl px-4 py-3';
+                row.innerHTML = `
+                    <div class="min-w-0">
+                        <p class="font-semibold">${escapeHtml(weekdayLabel(date) + ', ' + formatDateBR(date))}</p>
+                        <p class="text-sm ${day.open ? 'text-zinc-400' : 'text-red-400'}">${escapeHtml(summarizeDay(day))}</p>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" class="ex-edit bg-zinc-700 hover:bg-zinc-600 w-10 h-10 rounded-xl" aria-label="Editar ${escapeHtml(formatDateBR(date))}"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="ex-del bg-zinc-700 hover:bg-red-700 w-10 h-10 rounded-xl" aria-label="Voltar ${escapeHtml(formatDateBR(date))} ao padrão"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+                row.querySelector('.ex-edit').onclick = () => openScheduleEditor({ kind: 'date', date });
+                row.querySelector('.ex-del').onclick = () => removeException(date);
+                box.appendChild(row);
+            });
+        }
+
+        // ---- Proteção: agendamentos futuros que deixariam de caber no horário ----
+        function appointmentsLosingSlot(newSettings, newExceptions) {
+            return appointments
+                .filter(a => a.date && a.time && !isTimePast(a.date, a.time))
+                .filter(a => {
+                    const before = CheresSchedule.forDate(a.date, scheduleSettings, scheduleExceptions);
+                    const after = CheresSchedule.forDate(a.date, newSettings, newExceptions);
+                    return before.times.includes(a.time) && !after.times.includes(a.time);
+                })
+                .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time));
+        }
+
+        function confirmScheduleChange(newSettings, newExceptions, intro) {
+            const lost = appointmentsLosingSlot(newSettings, newExceptions);
+            if (!lost.length) return intro ? confirm(intro) : true;
+            const lines = lost.slice(0, 15).map(a => `• ${weekdayLabel(a.date)}, ${formatDateBR(a.date)} às ${a.time} — ${a.name || 'Cliente'} (${a.service || ''})`);
+            if (lost.length > 15) lines.push(`… e mais ${lost.length - 15}`);
+            return confirm(`${intro ? intro + '\n\n' : ''}⚠️ ${lost.length} agendamento(s) ficam fora do novo horário:\n\n${lines.join('\n')}\n\n` +
+                'Eles NÃO serão apagados e continuam na agenda. Se precisar, combine a remarcação com o cliente.\n\nSalvar mesmo assim?');
+        }
+
+        function cloneSettings() {
+            const s = JSON.parse(JSON.stringify(scheduleSettings || {}));
+            const days = {};
+            // O Firebase pode devolver "days" como array; normaliza para objeto.
+            if (s.days) Object.keys(s.days).forEach(k => { if (s.days[k]) days[k] = s.days[k]; });
+            s.days = days;
+            return s;
+        }
+
+        function failSave(err) {
+            console.error(err);
+            alert('❌ Não foi possível salvar. Confira a internet e se você ainda está logado.');
+        }
+
+        // ---- Editor (dia da semana ou data) ----
+        function openScheduleEditorForDate() {
+            const date = document.getElementById('exDate').value;
+            if (!date) { alert('Escolha uma data.'); return; }
+            if (date < localToday()) { alert('Escolha uma data a partir de hoje.'); return; }
+            openScheduleEditor({ kind: 'date', date });
+        }
+
+        function openScheduleEditor(target) {
+            fillTimeSelects();
+            const day = target.kind === 'weekday'
+                ? CheresSchedule.weekday(scheduleSettings, target.dow)
+                : scheduleDay(target.date);
+            scheduleEditor = { ...target, open: day.open, times: new Set(day.times) };
+            scheduleEditorOpener = document.activeElement;
+
+            const title = document.getElementById('seTitle');
+            const sub = document.getElementById('seSubtitle');
+            if (target.kind === 'weekday') {
+                title.textContent = `Toda ${CheresSchedule.DAY_NAMES[target.dow].toLowerCase()}`.replace('Toda sábado', 'Todo sábado').replace('Toda domingo', 'Todo domingo');
+                sub.textContent = day.source === 'default' ? 'Usando o horário padrão.' : 'Horário personalizado.';
+            } else {
+                title.textContent = `${CheresSchedule.DAY_NAMES[CheresSchedule.dayOfWeek(target.date)]}, ${formatDateBR(target.date)}`;
+                const week = CheresSchedule.weekday(scheduleSettings, CheresSchedule.dayOfWeek(target.date));
+                sub.textContent = day.source === 'exception'
+                    ? `Dia especial. Sem ele, valeria: ${summarizeDay(week)}.`
+                    : `Hoje segue a semana padrão (${summarizeDay(week)}). Ao salvar, vira dia especial.`;
+            }
+            document.getElementById('seResetBtn').classList.toggle('hidden', day.source === 'default');
+            document.getElementById('seBookedLegend').classList.toggle('hidden', target.kind !== 'date');
+            document.getElementById('scheduleEditor').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            renderScheduleEditor();
+            document.getElementById('seOpen').focus();
+        }
+
+        function closeScheduleEditor() {
+            document.getElementById('scheduleEditor').classList.add('hidden');
+            document.body.style.overflow = '';
+            scheduleEditor = null;
+            if (scheduleEditorOpener && document.contains(scheduleEditorOpener)) scheduleEditorOpener.focus();
+            scheduleEditorOpener = null;
+        }
+
+        function renderScheduleEditor() {
+            const ed = scheduleEditor;
+            if (!ed) return;
+            document.getElementById('seOpen').checked = ed.open;
+            document.getElementById('seBody').classList.toggle('hidden', !ed.open);
+            const n = ed.times.size;
+            document.getElementById('seCount').textContent = `${n} horário${n === 1 ? '' : 's'} ligado${n === 1 ? '' : 's'}`;
+
+            const booked = ed.kind === 'date'
+                ? new Set(appointments.filter(a => a.date === ed.date).map(a => a.time))
+                : new Set();
+            const grid = document.getElementById('seGrid');
+            grid.innerHTML = '';
+            CheresSchedule.sortTimes([...EDITOR_BASE_TIMES, ...ed.times, ...booked]).forEach(time => {
+                const on = ed.times.has(time);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                btn.className = `relative py-2.5 rounded-xl text-sm font-semibold border transition ${on ? 'bg-amber-500 border-amber-500 text-black' : 'bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500'}`;
+                btn.textContent = time;
+                if (booked.has(time)) {
+                    btn.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-user absolute top-1 right-1.5 text-[9px] text-sky-400" aria-hidden="true"></i>');
+                    btn.setAttribute('aria-label', `${time}, tem agendamento`);
+                }
+                btn.onclick = () => { on ? ed.times.delete(time) : ed.times.add(time); renderScheduleEditor(); };
+                grid.appendChild(btn);
+            });
+        }
+
+        function editorSetOpen(open) {
+            const ed = scheduleEditor;
+            if (!ed) return;
+            ed.open = open;
+            if (open && !ed.times.size) CheresSchedule.DEFAULT_TIMES.forEach(t => ed.times.add(t));
+            renderScheduleEditor();
+        }
+
+        function editorFill(on) {
+            const ed = scheduleEditor;
+            const from = document.getElementById('seFrom').value;
+            const to = document.getElementById('seTo').value;
+            if (!ed || !from || !to) return;
+            if (to < from) { alert('O horário final precisa ser depois do inicial.'); return; }
+            CheresSchedule.range(from, to).forEach(t => (on ? ed.times.add(t) : ed.times.delete(t)));
+            renderScheduleEditor();
+        }
+
+        function editorAddTime() {
+            const ed = scheduleEditor;
+            const t = document.getElementById('seExtra').value;
+            if (!ed || !CheresSchedule.isValidTime(t)) { alert('Escolha um horário de 30 em 30 minutos.'); return; }
+            ed.times.add(t);
+            renderScheduleEditor();
+        }
+
+        function editorResult() {
+            const times = CheresSchedule.sortTimes([...scheduleEditor.times]);
+            return { open: scheduleEditor.open && times.length > 0, times };
+        }
+
+        async function saveScheduleEditor() {
+            const ed = scheduleEditor;
+            if (!ed) return;
+            const result = editorResult();
+            if (ed.open && !result.times.length) { alert('Ligue pelo menos um horário ou desmarque "Atende neste dia".'); return; }
+            const store = result.open ? { times: CheresSchedule.timesToStore(result.times) } : null;
+            try {
+                if (ed.kind === 'weekday') {
+                    const value = result.open ? { open: true, ...store } : { open: false };
+                    const next = cloneSettings();
+                    next.days[ed.dow] = value;
+                    if (!confirmScheduleChange(next, scheduleExceptions)) return;
+                    await scheduleRef.child(`days/${ed.dow}`).set(value);
+                } else {
+                    const value = result.open ? store : { closed: true };
+                    const next = { ...scheduleExceptions, [ed.date]: value };
+                    if (!confirmScheduleChange(scheduleSettings, next)) return;
+                    await scheduleExceptionsRef.child(ed.date).set(value);
+                }
+                closeScheduleEditor();
+            } catch (e) { failSave(e); }
+        }
+
+        async function resetScheduleEditor() {
+            const ed = scheduleEditor;
+            if (!ed) return;
+            try {
+                if (ed.kind === 'weekday') {
+                    const next = cloneSettings();
+                    delete next.days[ed.dow];
+                    if (!confirmScheduleChange(next, scheduleExceptions, `Voltar ${CheresSchedule.DAY_NAMES[ed.dow].toLowerCase()} ao horário padrão?`)) return;
+                    await scheduleRef.child(`days/${ed.dow}`).remove();
+                } else {
+                    const next = { ...scheduleExceptions };
+                    delete next[ed.date];
+                    if (!confirmScheduleChange(scheduleSettings, next, `Voltar ${formatDateBR(ed.date)} à semana padrão?`)) return;
+                    await scheduleExceptionsRef.child(ed.date).remove();
+                }
+                closeScheduleEditor();
+            } catch (e) { failSave(e); }
+        }
+
+        async function removeException(date) {
+            const next = { ...scheduleExceptions };
+            delete next[date];
+            if (!confirmScheduleChange(scheduleSettings, next, `Voltar ${formatDateBR(date)} à semana padrão?`)) return;
+            try { await scheduleExceptionsRef.child(date).remove(); } catch (e) { failSave(e); }
+        }
+
+        // ---- Várias datas de uma vez ----
+        function onRangeModeChange() {
+            const hours = document.getElementById('rgMode').value === 'hours';
+            document.getElementById('rgHours').classList.toggle('hidden', !hours);
+            document.getElementById('rgSkipBox').classList.toggle('hidden', !hours);
+        }
+
+        async function applyScheduleRange() {
+            const from = document.getElementById('rgFrom').value;
+            const to = document.getElementById('rgTo').value;
+            const mode = document.getElementById('rgMode').value;
+            const skipClosed = document.getElementById('rgSkipClosed').checked;
+            if (!from || !to) { alert('Escolha as duas datas.'); return; }
+            if (from < localToday()) { alert('A data inicial precisa ser a partir de hoje.'); return; }
+            if (to < from) { alert('A data final precisa ser depois da inicial.'); return; }
+
+            let value = null;
+            let what = 'voltar à semana padrão';
+            if (mode === 'closed') { value = { closed: true }; what = 'fechar'; }
+            if (mode === 'hours') {
+                const first = document.getElementById('rgFirst').value;
+                const last = document.getElementById('rgLast').value;
+                if (!CheresSchedule.isValidTime(first) || !CheresSchedule.isValidTime(last) || last < first) {
+                    alert('O último horário precisa ser depois do primeiro.');
+                    return;
+                }
+                value = { times: CheresSchedule.timesToStore(CheresSchedule.range(first, last)) };
+                what = `atender das ${first} até o horário das ${last}`;
+            }
+
+            const all = CheresSchedule.datesBetween(from, to);
+            if (all.length > 120) { alert('Escolha um período de até 120 dias.'); return; }
+            const dates = all.filter(d => mode !== 'hours' || !skipClosed || CheresSchedule.weekday(scheduleSettings, CheresSchedule.dayOfWeek(d)).open);
+            if (!dates.length) { alert('Nenhuma data nesse período (todas caem em dias que a barbearia fecha).'); return; }
+
+            const updates = {};
+            const next = { ...scheduleExceptions };
+            dates.forEach(d => {
+                updates[d] = value;
+                if (value) next[d] = value; else delete next[d];
+            });
+            const list = dates.length <= 8 ? dates.map(formatDateBR).join(', ') : `${dates.length} datas, de ${formatDateBR(dates[0])} a ${formatDateBR(dates[dates.length - 1])}`;
+            if (!confirmScheduleChange(scheduleSettings, next, `Vai ${what} em: ${list}.\n\nConfirmar?`)) return;
+            try {
+                await scheduleExceptionsRef.update(updates);
+                alert(`✅ Pronto! ${dates.length} data(s) atualizada(s).`);
+            } catch (e) { failSave(e); }
+        }
+
+        // ---- Lista de horários do bloqueio individual ----
+        function refreshBlockTimeOptions() {
+            const sel = document.getElementById('blockTimeSlot');
+            const date = document.getElementById('blockTimeDate').value;
+            const previous = sel.value;
+            if (!date) { sel.innerHTML = '<option value="">Escolha a data primeiro</option>'; return; }
+            const day = scheduleDay(date);
+            if (!day.open) { sel.innerHTML = `<option value="">${closedDayText(day)}</option>`; return; }
+            sel.innerHTML = '<option value="">Selecione o horário</option>';
+            day.times.forEach(time => {
+                const opt = document.createElement('option');
+                const already = blockedTimeSlots.some(s => s.date === date && s.time === time);
+                opt.value = time;
+                opt.textContent = time + (already ? ' — já bloqueado' : '');
+                opt.disabled = already;
+                sel.appendChild(opt);
+            });
+            const prevOpt = previous && sel.querySelector(`option[value="${previous}"]`);
+            if (prevOpt && !prevOpt.disabled) sel.value = previous;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (!scheduleEditor) return;
+            if (e.key === 'Escape') { closeScheduleEditor(); return; }
+            if (e.key === 'Tab') {   // mantém o foco dentro do editor
+                const items = [...document.querySelectorAll('#scheduleEditor button, #scheduleEditor input, #scheduleEditor select')].filter(el => el.offsetParent !== null);
+                if (!items.length) return;
+                const first = items[0], last = items[items.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        });
 
         // ============ LOGIN DO BARBEIRO ============
         function showDashboard() {

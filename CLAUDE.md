@@ -4,9 +4,12 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
 
 ## Estrutura
 - `barbearia-cheres-main/index.html`: site público (agendar, conta do cliente, remarcar, cancelar).
-- `barbearia-cheres-main/admin.html`: painel do barbeiro (agenda, CRM, gráficos, bloqueios, administradores).
+- `barbearia-cheres-main/admin.html`: painel do barbeiro (agenda, horários, CRM, gráficos, bloqueios, administradores).
+- `barbearia-cheres-main/schedule.js`: **regra única dos horários** (`window.CheresSchedule`), carregada pelas duas páginas.
+  Nunca escrever listas de horários fixas no HTML: usar `CheresSchedule.forDate(date, settings, exceptions)`.
 - `database.rules.json`: regras do Realtime Database (fonte única das regras).
-- `tests/rules.test.mjs`: testes das regras no emulador.
+- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`: testes do `schedule.js`.
+- `backups/` (fora do Git): backups do banco antes de mexer em dados existentes.
 
 ## Deploy
 - Vercel publica **só a subpasta `barbearia-cheres-main/`** a cada push na `main`. Push na main = produção.
@@ -21,9 +24,18 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
   `contacts` (clientes cadastrados pelo barbeiro), `bookedSlots` (horários ocupados, valor = uid do dono ou `'barber'`),
   `blockedDates`, `blockedTimeSlots`, `admins` (uid → e-mail), `owner` (uid do André), `adminInvites`
   (chave = e-mail com "." trocado por ","), `verifiedExempt` (clientes antigos liberados da confirmação de e-mail).
+- Horário de funcionamento (leitura pública, escrita só admin, formato validado nas regras):
+  - `settings/schedule/days/{0-6}` = `{ open, times: { "HHMM": true } }` (0 = domingo). Dia sem nada salvo = padrão.
+  - `scheduleExceptions/{AAAA-MM-DD}` = `{ closed: true }` ou `{ times: { "HHMM": true } }`.
+  - Prioridade: data especial > dia da semana salvo > padrão (ter a sáb, 09:00 a 18:00, último horário 18:00).
+  - O Firebase pode devolver `days` como array; o `schedule.js` já trata.
+  - Mudança de horário nunca apaga agendamentos: o painel lista os que ficam de fora e pede confirmação.
+  - As regras não sabem se um horário está aberto (isso depende do `schedule.js`); `bookedSlots` aceita
+    qualquer HH:00/HH:30 de 00 a 23h, e o site confere a grade antes de reservar.
 
 ## Regras de segurança (não quebrar)
-- Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`.
+- Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.
+- `settings/$other` é recusado: ao criar um nó novo em `settings` (ex.: serviços), acrescentar a regra dele.
 - Cliente lê/escreve só os próprios dados, via query `orderByChild('phoneKey').equalTo(...)`.
 - Agendar/remarcar exige e-mail confirmado ou estar em `verifiedExempt`. Cancelar não exige.
 - Admin tem permissão **por nó**, não na raiz: no RTDB uma permissão dada na raiz não pode ser revogada abaixo,
@@ -34,7 +46,7 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
   necessários antes, publicar regras e fazer o push logo em seguida.
 
 ## Testes
-- `npm test` na raiz (sobe o emulador do Database). Precisa de Java 21:
+- `npm test` na raiz: roda `test:schedule` (só Node) e `test:rules` (sobe o emulador do Database). Precisa de Java 21:
   `JAVA_HOME` = `C:\Program Files\Eclipse Adoptium\jdk-21*` (o Java 8 da máquina não serve).
 - Para as páginas não há build nem lint; checar sintaxe dos `<script>` e testar no navegador.
 

@@ -238,3 +238,66 @@ describe('correções da revisão', () => {
         await assertFails(set(ref(novo(), 'admins/uid-novo'), 'novo@x.com'));
     });
 });
+
+describe('horário de funcionamento (fase 1)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    const bob = () => db(BOB.uid, { email: 'bob@x.com', email_verified: true });
+    const sat = { open: true, times: { '0900': true, '0930': true, '1330': true } };
+
+    test('visitante lê a semana padrão e os dias especiais, mas não grava', async () => {
+        await assertSucceeds(get(ref(db(), 'settings/schedule')));
+        await assertSucceeds(get(ref(db(), 'scheduleExceptions')));
+        await assertFails(set(ref(db(), 'settings/schedule/days/6'), sat));
+        await assertFails(set(ref(db(), 'scheduleExceptions/2026-12-24'), { closed: true }));
+    });
+    test('cliente logado também não altera horários', async () => {
+        await assertFails(set(ref(alice(), 'settings/schedule/days/6'), sat));
+        await assertFails(set(ref(alice(), 'scheduleExceptions/2026-12-24'), { closed: true }));
+        await assertFails(remove(ref(alice(), 'scheduleExceptions/2026-12-24')));
+    });
+    test('barbeiro edita dia da semana (sábado reduzido, dia fechado) e volta ao padrão', async () => {
+        await assertSucceeds(set(ref(andre(), 'settings/schedule/days/6'), sat));
+        await assertSucceeds(set(ref(andre(), 'settings/schedule/days/3'), { open: false }));
+        await assertSucceeds(remove(ref(andre(), 'settings/schedule/days/6')));
+    });
+    test('barbeiro cria data fechada, data até as 21h, horário avulso e várias datas de uma vez', async () => {
+        await assertSucceeds(set(ref(andre(), 'scheduleExceptions/2026-12-25'), { closed: true }));
+        await assertSucceeds(set(ref(andre(), 'scheduleExceptions/2026-12-23'), { times: { '0900': true, '2030': true, '2100': true } }));
+        await assertSucceeds(set(ref(andre(), 'scheduleExceptions/2026-12-22'), { times: { '1930': true } }));
+        await assertSucceeds(update(ref(andre(), 'scheduleExceptions'), { '2026-12-29': { closed: true }, '2026-12-30': { closed: true }, '2026-12-25': null }));
+    });
+    test('formato inválido é recusado mesmo para o barbeiro', async () => {
+        const bad = [
+            ['settings/schedule/days/7', sat],                                         // dia inexistente
+            ['settings/schedule/days/6', { open: true }],                              // aberto sem horários
+            ['settings/schedule/days/6', { open: true, times: { '0915': true } }],     // fora dos 30 min
+            ['settings/schedule/days/6', { open: true, times: { '2400': true } }],
+            ['settings/schedule/days/6', { ...sat, extra: 'x' }],                      // campo desconhecido
+            ['settings/qualquer', 'x'],
+            ['scheduleExceptions/24-12-2026', { closed: true }],                       // data mal escrita
+            ['scheduleExceptions/2026-12-24', { closed: false }],
+            ['scheduleExceptions/2026-12-24', { closed: true, times: { '0900': true } }],
+            ['scheduleExceptions/2026-12-24', { times: { '0900': 'sim' } }],
+            ['scheduleExceptions/2026-12-24', { note: '<script>' }],
+            ['settings', 'x'],                                                         // valor simples por cima do nó
+            ['settings/schedule', 'x'],
+            ['settings/schedule/days', 'x'],
+            ['scheduleExceptions', 'x']
+        ];
+        for (const [path, value] of bad) await assertFails(set(ref(andre(), path), value));
+    });
+    test('cliente reserva horário estendido (20:30) e de manhã cedo continua com regra de 30 min', async () => {
+        await assertSucceeds(set(ref(alice(), 'bookedSlots/2026-12-23_2030'), ALICE.uid));
+        await assertSucceeds(push(ref(alice(), 'appointments'), appt(ALICE, '2026-12-23', '20:30')));
+        await assertFails(set(ref(alice(), 'bookedSlots/2026-12-23_2045'), ALICE.uid));
+        await assertFails(set(ref(alice(), 'bookedSlots/2026-12-23_2400'), ALICE.uid));
+    });
+    test('disputa pelo mesmo horário estendido: só um cliente consegue (transaction)', async () => {
+        const slot = '2026-12-23_2100';
+        const tryBook = (ctx, uid) => runTransaction(ref(ctx, `bookedSlots/${slot}`), cur => (cur ? undefined : uid));
+        const [r1, r2] = await Promise.allSettled([tryBook(alice(), ALICE.uid), tryBook(bob(), BOB.uid)]);
+        const won = [r1, r2].filter(r => r.status === 'fulfilled' && r.value.committed).length;
+        if (won !== 1) throw new Error(`esperado 1 vencedor, houve ${won}`);
+    });
+});
