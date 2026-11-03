@@ -450,3 +450,14 @@ describe('correções da revisão (fase 4A)', () => {
         await assertSucceeds(remove(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`)));
     });
 });
+
+describe('financeiro por período', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    test('despesa com data do dia, sempre dentro do mês da chave', async () => {
+        await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-11-12', createdAt: 'x' }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-12-01' }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '12/11/2026' }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-11-99' }));
+        await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Sem data (antigo)', amount: 10 }));
+    });
+});

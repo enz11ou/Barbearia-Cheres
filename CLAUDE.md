@@ -54,8 +54,11 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
 
 - Gestão (Fase 4A):
   - `clientNotes/{telefone}` = `{ notes, birthday: "MM-DD", updatedAt }` — só admin (anotações na ficha e na tela Hoje).
-  - `expenses/{AAAA-MM}/{id}` = `{ label, amount, createdAt }` — só admin. Lucro do mês = faturamento − despesas.
-  - Financeiro e gráficos: só atendidos, pelo valor pago (histórico antigo pela tabela, forma "não informada").
+  - `expenses/{AAAA-MM}/{id}` = `{ label, amount, date: "AAAA-MM-DD" (dentro do mês da chave), createdAt }` — só admin.
+    Despesas antigas sem `date` usam o dia local de `createdAt` (`CheresReports.expenseDate`).
+  - Aba Financeiro (a Visão Geral foi incorporada nela): filtro de período (Hoje, Ontem, semanas, meses, De/Até) que vale
+    para cartões, despesas, lucro e gráficos. Só atendidos, pelo valor pago (histórico antigo pela tabela, forma "não informada").
+    "Próximos agendamentos" e "Próximos 7 dias" olham para frente e não dependem do filtro.
   - Fidelidade: `settings/loyalty` = `{ every: 7, since: "2026-11-03" }` (público lê). Conta cortes atendidos
     (serviço com "Corte" no nome) desde `since`. `loyalty/{telefone}/redeemed/{id}` = `{ date, at }`: admin grava, cliente lê o dele.
   - Lista de espera: `waitlist/{data}/{telefone}` = `{ name, uid, createdAt, notifiedAt? }`. O cliente (e-mail confirmado)

@@ -193,9 +193,6 @@
                 <button onclick="switchDashboardTab('today')" class="dashboard-tab active whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-sun"></i> Hoje
                 </button>
-                <button onclick="switchDashboardTab('overview')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line"></i> Visão Geral
-                </button>
                 <button onclick="switchDashboardTab('appointments')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-calendar-check"></i> Agendamentos
                 </button>
@@ -254,63 +251,6 @@
                 </div>
             </div>
 
-            <!-- TAB: OVERVIEW -->
-            <div id="tab-overview" class="dashboard-content hidden">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Faturamento total</p>
-                                <p id="totalRevenue" class="text-3xl font-bold text-amber-500">R$ 0,00</p>
-                            </div>
-                            <i class="fa-solid fa-money-bill-wave text-4xl text-amber-500 opacity-30"></i>
-                        </div>
-                    </div>
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Agendamentos Ativos</p>
-                                <p id="activeAppointments" class="text-3xl font-bold text-green-500">0</p>
-                            </div>
-                            <i class="fa-solid fa-calendar-check text-4xl text-green-500 opacity-30"></i>
-                        </div>
-                    </div>
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Clientes Únicos</p>
-                                <p id="uniqueClients" class="text-3xl font-bold text-blue-500">0</p>
-                            </div>
-                            <i class="fa-solid fa-users text-4xl text-blue-500 opacity-30"></i>
-                        </div>
-                    </div>
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Serviço Popular</p>
-                                <p id="popularService" class="text-2xl font-bold text-purple-500">-</p>
-                            </div>
-                            <i class="fa-solid fa-star text-4xl text-purple-500 opacity-30"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento por serviço</h3>
-                        <div class="chart-container">
-                            <canvas id="serviceChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Agendamentos por Dia</h3>
-                        <div class="chart-container">
-                            <canvas id="dailyChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- TAB: APPOINTMENTS -->
             <div id="tab-appointments" class="dashboard-content hidden">
                 <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-6">
@@ -344,75 +284,82 @@
                 </div>
             </div>
 
-            <!-- TAB: FINANCEIRO (antiga Analytics) -->
+            <!-- TAB: FINANCEIRO (junta a antiga Visão Geral; tudo segue o período escolhido) -->
             <div id="tab-analytics" class="dashboard-content hidden">
-                <p class="text-xs text-zinc-500 mb-4">Conta só atendimentos marcados como Atendido, pelo valor pago. O histórico anterior a 03/11/2026 entra pelo preço de tabela, com forma de pagamento "não informada".</p>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Hoje</p><p id="finToday" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finTodayCount" class="text-xs text-zinc-500 mt-1"></p></div>
-                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Esta semana</p><p id="finWeek" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finWeekCount" class="text-xs text-zinc-500 mt-1"></p></div>
-                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Este mês</p><p id="finMonthTotal" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finMonthCount" class="text-xs text-zinc-500 mt-1"></p></div>
-                </div>
-
-                <div class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800 mb-6">
-                    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-                        <h3 class="text-xl font-bold text-amber-500"><i class="fa-solid fa-calendar mr-2"></i>Resumo do mês</h3>
-                        <label class="flex items-center gap-2 text-sm text-zinc-400">Mês
-                            <input type="month" id="finMonth" onchange="renderFinance()" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
-                        </label>
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 mb-5">
+                    <div id="finPresets" class="flex flex-wrap gap-2" role="group" aria-label="Escolher período">
+                        <button type="button" data-preset="today" onclick="setFinPreset('today')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Hoje</button>
+                        <button type="button" data-preset="yesterday" onclick="setFinPreset('yesterday')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Ontem</button>
+                        <button type="button" data-preset="week" onclick="setFinPreset('week')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Esta semana</button>
+                        <button type="button" data-preset="lastweek" onclick="setFinPreset('lastweek')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Semana passada</button>
+                        <button type="button" data-preset="month" onclick="setFinPreset('month')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Este mês</button>
+                        <button type="button" data-preset="lastmonth" onclick="setFinPreset('lastmonth')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Mês passado</button>
+                        <button type="button" data-preset="all" onclick="setFinPreset('all')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Tudo</button>
+                        <button type="button" data-preset="custom" onclick="setFinPreset('custom')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Personalizado</button>
                     </div>
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Faturamento</p><p id="finSelTotal" class="text-xl font-bold text-emerald-400">R$ 0,00</p></div>
-                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Despesas</p><p id="finSelExpenses" class="text-xl font-bold text-red-400">R$ 0,00</p></div>
-                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Lucro</p><p id="finSelProfit" class="text-xl font-bold text-amber-400">R$ 0,00</p></div>
-                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Ticket médio</p><p id="finSelAvg" class="text-xl font-bold text-white">R$ 0,00</p><p id="finSelCount" class="text-[11px] text-zinc-500"></p></div>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <form id="finCustom" onsubmit="event.preventDefault(); applyCustomPeriod();" class="hidden mt-4 flex flex-wrap items-end gap-3">
                         <div>
-                            <h4 class="text-sm font-semibold text-zinc-300 mb-3">Por forma de pagamento</h4>
-                            <div id="finMethods" class="space-y-3"></div>
+                            <label for="finFrom" class="block text-xs text-zinc-400 mb-1">De</label>
+                            <input type="date" id="finFrom" required class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
                         </div>
                         <div>
-                            <h4 class="text-sm font-semibold text-zinc-300 mb-3">Despesas do mês</h4>
-                            <form onsubmit="event.preventDefault(); addExpense();" class="grid grid-cols-2 sm:grid-cols-[1fr_7rem_auto] gap-2 mb-3">
-                                <label for="expLabel" class="sr-only">Descrição da despesa</label>
-                                <input type="text" id="expLabel" maxlength="80" required placeholder="Ex.: aluguel, produtos" class="col-span-2 sm:col-span-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
-                                <label for="expAmount" class="sr-only">Valor (R$)</label>
-                                <input type="text" id="expAmount" inputmode="decimal" required placeholder="R$" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
-                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2.5 rounded-xl font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Adicionar</button>
-                            </form>
-                            <div id="finExpenses" class="space-y-2"></div>
+                            <label for="finTo" class="block text-xs text-zinc-400 mb-1">Até</label>
+                            <input type="date" id="finTo" required class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
                         </div>
-                    </div>
+                        <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold transition">Aplicar</button>
+                    </form>
+                    <p id="finPeriodLabel" class="text-sm text-zinc-300 mt-3 font-medium"></p>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento da semana (por dia)</h3>
-                        <div class="chart-container">
-                            <canvas id="weekChart"></canvas>
-                        </div>
-                        <p id="weekRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Faturamento</p><p id="finTotal" class="text-2xl sm:text-3xl font-bold text-emerald-400">R$ 0,00</p><p id="finCount" class="text-xs text-zinc-500 mt-1"></p></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Despesas</p><p id="finExpTotal" class="text-2xl sm:text-3xl font-bold text-red-400">R$ 0,00</p><p id="finExpCount" class="text-xs text-zinc-500 mt-1"></p></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Lucro</p><p id="finProfit" class="text-2xl sm:text-3xl font-bold text-amber-400">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Faturamento − despesas (cada despesa conta no dia lançado)</p></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Ticket médio</p><p id="finAvg" class="text-2xl sm:text-3xl font-bold text-white">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Por atendimento</p></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div><p class="text-zinc-400 text-sm">Clientes atendidos</p><p id="finClients" class="text-2xl font-bold text-blue-400">0</p></div><i class="fa-solid fa-users text-3xl text-blue-400 opacity-30"></i></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-zinc-400 text-sm">Serviço mais vendido</p><p id="finTopService" class="text-xl font-bold text-purple-400 truncate">—</p><p id="finTopCount" class="text-xs text-zinc-500"></p></div><i class="fa-solid fa-star text-3xl text-purple-400 opacity-30"></i></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div><p class="text-zinc-400 text-sm">Próximos agendamentos</p><p id="finUpcoming" class="text-2xl font-bold text-amber-500">0</p><p class="text-xs text-zinc-500">a partir de agora</p></div><i class="fa-solid fa-calendar-check text-3xl text-amber-500 opacity-30"></i></div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 mb-6">
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 id="finDailyTitle" class="text-lg font-bold mb-3 text-amber-500">Faturamento por dia</h3>
+                        <div class="chart-container"><canvas id="finDailyChart" aria-label="Gráfico de faturamento por dia" role="img"></canvas></div>
                     </div>
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento do mês (por dia)</h3>
-                        <div class="chart-container">
-                            <canvas id="monthChart"></canvas>
-                        </div>
-                        <p id="monthRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 class="text-lg font-bold mb-4 text-amber-500">Por forma de pagamento</h3>
+                        <div id="finMethods" class="space-y-4"></div>
                     </div>
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento por serviço (mês)</h3>
-                        <div class="chart-container">
-                            <canvas id="serviceDistributionChart"></canvas>
-                        </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 class="text-lg font-bold mb-3 text-amber-500">Faturamento por serviço</h3>
+                        <div class="chart-container"><canvas id="finServiceChart" aria-label="Gráfico de faturamento por serviço" role="img"></canvas></div>
                     </div>
-                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Atendimentos por horário</h3>
-                        <div class="chart-container">
-                            <canvas id="hourlyChart"></canvas>
-                        </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 class="text-lg font-bold mb-3 text-amber-500">Despesas do período</h3>
+                        <form onsubmit="event.preventDefault(); addExpense();" class="grid grid-cols-2 sm:grid-cols-[1fr_6.5rem_9.5rem] gap-2 mb-2">
+                            <label for="expLabel" class="sr-only">Descrição da despesa</label>
+                            <input type="text" id="expLabel" maxlength="80" required placeholder="Ex.: aluguel, produtos" class="col-span-2 sm:col-span-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                            <label for="expAmount" class="sr-only">Valor (R$)</label>
+                            <input type="text" id="expAmount" inputmode="decimal" required placeholder="R$" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                            <label for="expDate" class="sr-only">Data da despesa</label>
+                            <input type="date" id="expDate" required oninput="this.dataset.touched = '1'" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                            <button type="submit" class="col-span-2 sm:col-span-3 sm:justify-self-start bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Adicionar despesa</button>
+                        </form>
+                        <div class="mb-2"></div>
+                        <div id="finExpenses" class="space-y-2 max-h-72 overflow-y-auto"></div>
+                    </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 class="text-lg font-bold mb-3 text-amber-500">Atendimentos por horário</h3>
+                        <div class="chart-container"><canvas id="finHourlyChart" aria-label="Gráfico de atendimentos por horário" role="img"></canvas></div>
+                    </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                        <h3 class="text-lg font-bold mb-3 text-amber-500">Próximos 7 dias</h3>
+                        <div class="chart-container"><canvas id="finUpcomingChart" aria-label="Gráfico de agendamentos nos próximos 7 dias" role="img"></canvas></div>
                     </div>
                 </div>
+                <p class="text-xs text-zinc-500">Conta só atendimentos marcados como Atendido, pelo valor pago. O histórico anterior a 03/11/2026 entra pelo preço de tabela, com forma de pagamento "não informada".</p>
             </div>
 
             <!-- TAB: CRM -->
@@ -858,7 +805,7 @@
         let siteClients = [];
         let contacts = [];
         let cancelledList = [];
-        let weekChart, monthChart, serviceChart, dailyChart, serviceDistributionChart, hourlyChart;
+        let finDailyChart, finServiceChart, finHourlyChart, finUpcomingChart;   // gráficos da aba Financeiro
 
         const servicePrices = {
             'Corte': 35, 'Sobrancelha': 10, 'Pigmentação': 15, 'Reflexo': 75,
@@ -1064,180 +1011,18 @@
             const btn = document.querySelector(`.dashboard-tab[onclick="switchDashboardTab('${tab}')"]`);
             if (btn) btn.classList.add('active');
             if (tab === 'today') renderToday();
+            if (tab === 'analytics' && finDirty) renderFinance();
             setTimeout(() => {
                 if (tab === 'analytics') {
-                    [weekChart, monthChart, serviceDistributionChart, hourlyChart].forEach(c => c && c.resize());
+                    [finDailyChart, finServiceChart, finHourlyChart, finUpcomingChart].forEach(c => c && c.resize());
                 }
             }, 100);
         }
 
-        // ============ STATS ============
-        function calculateStats() {
-            const today = localToday();
-            const activeApps = appointments.filter(a => a.date >= today);
-            const uniqueClients = [...new Set(appointments.map(a => a.name))].length;
-
-            const serviceCount = {};
-            appointments.forEach(app => {
-                serviceCount[app.service] = (serviceCount[app.service] || 0) + 1;
-            });
-            const popularService = Object.keys(serviceCount).length
-                ? Object.keys(serviceCount).reduce((a, b) => serviceCount[a] > serviceCount[b] ? a : b)
-                : 'Nenhum';
-
-            document.getElementById('activeAppointments').textContent = activeApps.length;
-            document.getElementById('uniqueClients').textContent = uniqueClients;
-            document.getElementById('popularService').textContent = popularService;
-        }
-
-        function calculateTotalRevenue() {
-            const total = financeEntries().reduce((sum, e) => sum + e.amount, 0);
-            document.getElementById('totalRevenue').textContent = money(total);
-        }
-
-        // ============ CHARTS ============
-        function getServiceData(from, to) {
-            const d = {};
-            financeEntries().filter(e => (!from || e.date >= from) && (!to || e.date <= to))
-                .forEach(e => { d[e.service] = Math.round(((d[e.service] || 0) + e.amount) * 100) / 100; });
-            return d;
-        }
-
-        function getDailyData() {
-            const d = {};
-            appointments.forEach(app => { d[app.date] = (d[app.date] || 0) + 1; });
-            return d;
-        }
-
-        function getWeeklyRevenue() {
-            const [from, to] = CheresReports.weekRange(localToday());
-            const total = CheresReports.summarize(financeEntries(), from, to).total;
-            document.getElementById('weekRevenue').textContent = `Total: ${money(total)}`;
-            return total;
-        }
-
-        function getMonthlyRevenue() {
-            const [from, to] = CheresReports.monthRange(localToday());
-            const total = CheresReports.summarize(financeEntries(), from, to).total;
-            document.getElementById('monthRevenue').textContent = `Total: ${money(total)}`;
-            return total;
-        }
-
-        function getHourlyData() {
-            const d = {};
-            financeEntries().filter(e => e.time).forEach(e => {
-                const h = e.time.split(':')[0];
-                d[h] = (d[h] || 0) + 1;
-            });
-            return d;
-        }
-
+        // ============ GRÁFICOS ============
+        // Tudo do financeiro (cartões e gráficos) é desenhado por renderFinance(), conforme o período escolhido.
         function updateAllCharts() {
-            calculateStats();
-            calculateTotalRevenue();
-            updateServiceChart();
-            updateDailyChart();
-            updateWeekChart();
-            updateMonthChart();
-            updateServiceDistributionChart();
-            updateHourlyChart();
             renderFinance();
-        }
-
-        const CHART_COLORS = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#f97316','#06b6d4','#84cc16'];
-
-        function updateServiceChart() {
-            const data = getServiceData();
-            const labels = Object.keys(data);
-            const values = Object.values(data);
-            if (serviceChart) serviceChart.destroy();
-            const ctx = document.getElementById('serviceChart');
-            if (!ctx) return;
-            serviceChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
-            });
-        }
-
-        function updateDailyChart() {
-            const data = getDailyData();
-            const labels = Object.keys(data).sort();
-            const values = labels.map(l => data[l]);
-            if (dailyChart) dailyChart.destroy();
-            const ctx = document.getElementById('dailyChart');
-            if (!ctx) return;
-            dailyChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Agendamentos', data: values.length ? values : [0], backgroundColor: '#f59e0b', borderColor: '#d97706', borderWidth: 2, borderRadius: 8 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
-            });
-        }
-
-        // Faturamento por dia da semana atual (domingo a sábado).
-        function updateWeekChart() {
-            const [from] = CheresReports.weekRange(localToday());
-            const entries = financeEntries();
-            const days = Array.from({ length: 7 }, (_, i) => addDaysISO(from, i));
-            const byDay = dailyTotals(entries);
-            const values = days.map(d => byDay[d] || 0);
-            if (weekChart) weekChart.destroy();
-            const ctx = document.getElementById('weekChart');
-            if (!ctx) return;
-            weekChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: days.map(d => CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(d)] + ' ' + d.slice(8)), datasets: [{ label: 'Faturamento (R$)', data: values, backgroundColor: '#f59e0b', borderRadius: 8 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
-            });
-            getWeeklyRevenue();
-        }
-
-        // Faturamento por dia do mês atual.
-        function updateMonthChart() {
-            const [from, to] = CheresReports.monthRange(localToday());
-            const entries = financeEntries();
-            const days = [];
-            for (let d = from; d <= to; d = addDaysISO(d, 1)) days.push(d);
-            const byDay = dailyTotals(entries);
-            const values = days.map(d => byDay[d] || 0);
-            if (monthChart) monthChart.destroy();
-            const ctx = document.getElementById('monthChart');
-            if (!ctx) return;
-            monthChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: days.map(d => d.slice(8)), datasets: [{ label: 'Faturamento (R$)', data: values, backgroundColor: '#10b981', borderRadius: 6 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
-            });
-            getMonthlyRevenue();
-        }
-
-        function updateServiceDistributionChart() {
-            const [from, to] = CheresReports.monthRange(localToday());
-            const data = getServiceData(from, to);
-            const labels = Object.keys(data).sort((a, b) => data[b] - data[a]);
-            const values = labels.map(l => data[l]);
-            if (serviceDistributionChart) serviceDistributionChart.destroy();
-            const ctx = document.getElementById('serviceDistributionChart');
-            if (!ctx) return;
-            serviceDistributionChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Faturamento (R$)', data: values.length ? values : [0], backgroundColor: '#10b981', borderColor: '#059669', borderWidth: 2, borderRadius: 8 }] },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true } } }
-            });
-        }
-
-        function updateHourlyChart() {
-            const data = getHourlyData();
-            const labels = Object.keys(data).sort();
-            const values = labels.map(l => data[l]);
-            if (hourlyChart) hourlyChart.destroy();
-            const ctx = document.getElementById('hourlyChart');
-            if (!ctx) return;
-            hourlyChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Atendimentos', data: values.length ? values : [0], borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#8b5cf6', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
-            });
         }
 
         // ============ CADASTROS E HISTÓRICO DOS CLIENTES (CRM) ============
@@ -2965,46 +2750,114 @@
             }
             return financeCache.entries;
         }
-        function dailyTotals(entries) {
-            const map = {};
-            entries.forEach(e => { map[e.date] = Math.round(((map[e.date] || 0) + e.amount) * 100) / 100; });
-            return map;
-        }
 
         const METHOD_STYLE = { pix: ['Pix', 'bg-emerald-500'], cash: ['Dinheiro', 'bg-amber-500'], card: ['Cartão', 'bg-blue-500'], unknown: ['Não informado', 'bg-zinc-500'] };
+        const CHART_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#84cc16'];
+        const AXES = { y: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true }, x: { ticks: { color: '#999', maxRotation: 0, autoSkip: true }, grid: { color: '#333' } } };
 
-        function renderFinance() {
-            if (!document.getElementById('finToday') || !adminDataStarted) return;
-            const entries = financeEntries();
+        // ---- Filtro de período ----
+        let finPeriod = { preset: 'month', from: '', to: '' };
+
+        function currentFinRange() {
             const today = localToday();
+            if (finPeriod.preset === 'custom' && finPeriod.from && finPeriod.to) return [finPeriod.from, finPeriod.to];
+            if (finPeriod.preset === 'all') {
+                // Do primeiro atendimento (ou despesa) registrado até hoje.
+                const dates = financeEntries().map(e => e.date);
+                Object.keys(expenses).forEach(m => dates.push(m + '-01'));
+                const first = dates.filter(Boolean).sort()[0];
+                return [first && first < today ? first : today, today];
+            }
+            return CheresReports.presetRange(finPeriod.preset, today) || CheresReports.presetRange('month', today);
+        }
+
+        function setFinPreset(preset) {
+            const custom = document.getElementById('finCustom');
+            if (preset === 'custom') {
+                // Só mostra as datas; o período muda quando o André toca em "Aplicar" (com validação).
+                const [from, to] = currentFinRange();
+                const f = document.getElementById('finFrom'), t = document.getElementById('finTo');
+                f.value = from;
+                t.value = to;
+                custom.classList.remove('hidden');
+                f.focus();
+                return;
+            } else {
+                custom.classList.add('hidden');
+                finPeriod = { preset, from: '', to: '' };
+            }
+            renderFinance();
+        }
+
+        function applyCustomPeriod() {
+            const from = document.getElementById('finFrom').value;
+            const to = document.getElementById('finTo').value;
+            if (!from || !to) { alert('Escolha as duas datas.'); return; }
+            if (to < from) { alert('A data final precisa ser depois da inicial.'); return; }
+            if (CheresReports.dailySeries([], from, to).days.length > 366) { alert('Escolha um período de até 1 ano (para tudo, use o atalho "Tudo").'); return; }
+            finPeriod = { preset: 'custom', from, to };
+            renderFinance();
+        }
+
+        function periodLabel(from, to) {
+            if (from === to) return `${CheresSchedule.DAY_NAMES[CheresSchedule.dayOfWeek(from)]}, ${formatDateBR(from)}`;
+            const days = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1;
+            return `${formatDateBR(from)} a ${formatDateBR(to)} · ${days} dias`;
+        }
+
+        function drawChart(current, id, config) {
+            if (current) current.destroy();
+            const ctx = document.getElementById(id);
+            return ctx ? new Chart(ctx, config) : null;
+        }
+
+        // ---- Financeiro: cartões, formas de pagamento, despesas e gráficos do período ----
+        // Só desenha com a aba visível (os gráficos custam caro); fora dela, marca para desenhar ao abrir.
+        let finDirty = true, finFrame = 0;
+        function renderFinance() {
+            const tab = document.getElementById('tab-analytics');
+            if (!tab || !adminDataStarted) return;
+            if (tab.classList.contains('hidden')) { finDirty = true; return; }
+            if (finFrame) return;
+            // Junta várias chamadas seguidas (eventos do banco em rajada) num desenho só.
+            finFrame = setTimeout(() => { finFrame = 0; finDirty = false; drawFinance(); }, 30);
+        }
+
+        function drawFinance() {
+            const [from, to] = currentFinRange();
+            const entries = financeEntries();
+            const sum = CheresReports.summarize(entries, from, to);
+            const hl = CheresReports.periodHighlights(entries, from, to);
+            const exp = CheresReports.expensesInRange(expenses, from, to);
+            const spent = Math.round(exp.reduce((t, e) => t + e.amount, 0) * 100) / 100;
             const put = (id, text) => { document.getElementById(id).textContent = text; };
-            const count = n => `${n} atendimento${n === 1 ? '' : 's'}`;
-            const d = CheresReports.summarize(entries, today, today);
-            const w = CheresReports.summarize(entries, ...CheresReports.weekRange(today));
-            const m = CheresReports.summarize(entries, ...CheresReports.monthRange(today));
-            put('finToday', money(d.total)); put('finTodayCount', count(d.count));
-            put('finWeek', money(w.total)); put('finWeekCount', count(w.count));
-            put('finMonthTotal', money(m.total)); put('finMonthCount', count(m.count));
+            const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-            const monthInput = document.getElementById('finMonth');
-            if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(monthInput.value)) monthInput.value = today.slice(0, 7);
-            const month = monthInput.value;
-            const sel = CheresReports.summarize(entries, ...CheresReports.monthRange(month + '-01'));
-            const monthExpenses = expenses[month] || {};
-            const spent = CheresReports.sumExpenses(monthExpenses);
-            put('finSelTotal', money(sel.total));
-            put('finSelExpenses', money(spent));
-            put('finSelProfit', money(sel.total - spent));
-            document.getElementById('finSelProfit').className = `text-xl font-bold ${sel.total - spent < 0 ? 'text-red-400' : 'text-amber-400'}`;
-            put('finSelAvg', money(sel.average));
-            put('finSelCount', count(sel.count));
+            document.querySelectorAll('.fin-preset').forEach(b => {
+                const on = b.dataset.preset === finPeriod.preset;
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                b.classList.toggle('bg-amber-500', on); b.classList.toggle('text-black', on); b.classList.toggle('border-amber-500', on);
+                b.classList.toggle('bg-zinc-900', !on); b.classList.toggle('text-zinc-300', !on); b.classList.toggle('border-zinc-700', !on);
+            });
+            put('finPeriodLabel', periodLabel(from, to));
 
+            put('finTotal', money(sum.total)); put('finCount', count(sum.count, 'atendimento', 'atendimentos'));
+            put('finExpTotal', money(spent)); put('finExpCount', count(exp.length, 'despesa', 'despesas'));
+            put('finProfit', money(sum.total - spent));
+            document.getElementById('finProfit').className = `text-2xl sm:text-3xl font-bold ${sum.total - spent < 0 ? 'text-red-400' : 'text-amber-400'}`;
+            put('finAvg', money(sum.average));
+            put('finClients', String(hl.uniqueClients));
+            put('finTopService', hl.topService || '—');
+            put('finTopCount', hl.topService ? count(hl.topCount, 'vez', 'vezes') : '');
+            put('finUpcoming', String(appointments.filter(a => a.date && a.time && !isTimePast(a.date, a.time)).length));
+
+            // Formas de pagamento
             const methods = document.getElementById('finMethods');
-            methods.innerHTML = '';
-            Object.keys(METHOD_STYLE).forEach(k => {
-                const value = sel.byMethod[k] || 0;
+            methods.innerHTML = sum.count ? '' : '<p class="text-sm text-zinc-500">Nenhum atendimento no período.</p>';
+            if (sum.count) Object.keys(METHOD_STYLE).forEach(k => {
+                const value = sum.byMethod[k] || 0;
                 if (k === 'unknown' && !value) return;
-                const pct = sel.total ? Math.round((value / sel.total) * 100) : 0;
+                const pct = sum.total ? Math.round((value / sum.total) * 100) : 0;
                 const [label, color] = METHOD_STYLE[k];
                 const row = document.createElement('div');
                 row.innerHTML = `<div class="flex justify-between text-sm mb-1"><span>${label}</span><span class="text-zinc-300">${money(value)} · ${pct}%</span></div>
@@ -3012,38 +2865,98 @@
                 methods.appendChild(row);
             });
 
+            // Despesas do período
+            const dateInput = document.getElementById('expDate');
+            if (!dateInput.value || !dateInput.dataset.touched) dateInput.value = localToday();
             const list = document.getElementById('finExpenses');
-            const keys = Object.keys(monthExpenses).sort((a, b) => String(monthExpenses[b].createdAt || '').localeCompare(String(monthExpenses[a].createdAt || '')));
-            list.innerHTML = keys.length ? '' : '<p class="text-sm text-zinc-500">Nenhuma despesa lançada neste mês.</p>';
-            keys.forEach(k => {
-                const e = monthExpenses[k];
+            list.innerHTML = exp.length ? '' : '<p class="text-sm text-zinc-500">Nenhuma despesa lançada neste período.</p>';
+            exp.forEach(e => {
                 const row = document.createElement('div');
-                row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl px-3 py-2';
-                row.innerHTML = `<span class="min-w-0 truncate">${escapeHtml(e.label)}</span>
-                    <span class="flex items-center gap-2 shrink-0"><span class="text-red-300">${money(e.amount)}</span>
+                row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl pl-3 pr-1 py-1';
+                row.innerHTML = `<span class="min-w-0"><span class="block truncate">${escapeHtml(e.label)}</span><span class="text-xs text-zinc-500">${escapeHtml(formatDateBR(e.date))}</span></span>
+                    <span class="flex items-center gap-1 shrink-0"><span class="text-red-300">${money(e.amount)}</span>
                     <button type="button" class="text-zinc-400 hover:text-red-400 w-11 h-11" aria-label="Excluir despesa ${escapeHtml(e.label)}"><i class="fa-solid fa-trash"></i></button></span>`;
-                row.querySelector('button').onclick = () => removeExpense(month, k, e);
+                row.querySelector('button').onclick = () => removeExpense(e);
                 list.appendChild(row);
+            });
+
+            // Faturamento por dia (agrupa por mês em períodos longos)
+            const spanDays = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1;
+            let labels, values;
+            if (spanDays > 62) {
+                const byMonth = {};
+                for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = CheresReports.addDays(m + '-28', 4).slice(0, 7)) byMonth[m] = 0;
+                entries.forEach(e => { if (e.date >= from && e.date <= to) { const m = e.date.slice(0, 7); byMonth[m] = Math.round(((byMonth[m] || 0) + e.amount) * 100) / 100; } });
+                labels = Object.keys(byMonth).map(m => `${m.slice(5)}/${m.slice(0, 4)}`);
+                values = Object.values(byMonth);
+                put('finDailyTitle', 'Faturamento por mês');
+            } else {
+                const series = CheresReports.dailySeries(entries, from, to);
+                labels = series.days.map(d => series.days.length <= 7 ? `${CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(d)]} ${d.slice(8)}` : `${d.slice(8)}/${d.slice(5, 7)}`);
+                values = series.values;
+                put('finDailyTitle', 'Faturamento por dia');
+            }
+            finDailyChart = drawChart(finDailyChart, 'finDailyChart', {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Faturamento (R$)', data: values, backgroundColor: '#10b981', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: AXES }
+            });
+
+            // Por serviço
+            const svc = Object.keys(sum.byService).sort((a, b) => sum.byService[b] - sum.byService[a]);
+            finServiceChart = drawChart(finServiceChart, 'finServiceChart', {
+                type: 'bar',
+                data: { labels: svc.length ? svc : ['Sem dados'], datasets: [{ label: 'Faturamento (R$)', data: svc.length ? svc.map(k => Math.round(sum.byService[k] * 100) / 100) : [0], backgroundColor: CHART_COLORS, borderRadius: 6 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: AXES.y, y: { ticks: { color: '#ccc' }, grid: { display: false } } } }
+            });
+
+            // Atendimentos por horário
+            const byHour = {};
+            entries.forEach(e => { if (e.date >= from && e.date <= to && e.time) { const h = e.time.slice(0, 2) + 'h'; byHour[h] = (byHour[h] || 0) + 1; } });
+            const hours = Object.keys(byHour).sort();
+            finHourlyChart = drawChart(finHourlyChart, 'finHourlyChart', {
+                type: 'bar',
+                data: { labels: hours.length ? hours : ['Sem dados'], datasets: [{ label: 'Atendimentos', data: hours.length ? hours.map(h => byHour[h]) : [0], backgroundColor: '#8b5cf6', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { ...AXES, y: { ...AXES.y, ticks: { color: '#999', precision: 0 } } } }
+            });
+
+            // Próximos 7 dias (agendamentos, não depende do filtro)
+            const today = localToday();
+            const next = Array.from({ length: 7 }, (_, i) => CheresReports.addDays(today, i));
+            finUpcomingChart = drawChart(finUpcomingChart, 'finUpcomingChart', {
+                type: 'bar',
+                data: { labels: next.map((d, i) => i === 0 ? 'Hoje' : `${CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(d)]} ${d.slice(8)}`), datasets: [{ label: 'Agendamentos', data: next.map(d => appointments.filter(a => a.date === d).length), backgroundColor: '#f59e0b', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { ...AXES, y: { ...AXES.y, ticks: { color: '#999', precision: 0 } } } }
             });
         }
 
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && adminDataStarted) { finDirty = true; renderFinance(); renderToday(); }
+        });
+
         async function addExpense() {
-            const month = document.getElementById('finMonth').value || localToday().slice(0, 7);
             const label = document.getElementById('expLabel').value.trim();
             const amount = CheresAttendance.parseAmount(document.getElementById('expAmount').value);
+            const date = document.getElementById('expDate').value || localToday();
             if (!label) { alert('Descreva a despesa.'); return; }
             if (amount === null) { alert('Informe o valor (ex.: 800 ou 150,50).'); return; }
+            if (!/^20\d{2}-\d{2}-\d{2}$/.test(date)) { alert('Escolha a data da despesa.'); return; }
             try {
-                await expensesRef.child(month).push({ label: label.slice(0, 80), amount, createdAt: new Date().toISOString() });
+                await expensesRef.child(date.slice(0, 7)).push({ label: label.slice(0, 80), amount, date, createdAt: new Date().toISOString() });
                 document.getElementById('expLabel').value = '';
                 document.getElementById('expAmount').value = '';
+                const dateInput = document.getElementById('expDate');
+                dateInput.value = localToday();
+                delete dateInput.dataset.touched;
                 document.getElementById('expLabel').focus();
+                const [from, to] = currentFinRange();
+                if (date < from || date > to) showToast({ title: 'Despesa lançada', body: `Ela é de ${formatDateBR(date)}, fora do período que está na tela.`, kind: 'ok' });
             } catch (e) { failSave(e); }
         }
 
-        async function removeExpense(month, key, e) {
-            if (!confirm(`Excluir a despesa "${e.label}" (${money(e.amount)})?`)) return;
-            try { await expensesRef.child(`${month}/${key}`).remove(); } catch (err) { failSave(err); }
+        async function removeExpense(e) {
+            if (!confirm(`Excluir a despesa "${e.label}" (${money(e.amount)}) de ${formatDateBR(e.date)}?`)) return;
+            try { await expensesRef.child(`${e.month}/${e.id}`).remove(); } catch (err) { failSave(err); }
         }
 
         // ============ FICHA: ANOTAÇÕES, ANIVERSÁRIO E FIDELIDADE ============
