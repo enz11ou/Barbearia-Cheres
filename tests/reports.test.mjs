@@ -124,6 +124,8 @@ describe('filtro de período', () => {
         ];
         const h = R.periodHighlights(e, '2026-11-01', '2026-11-30');
         assert.equal(h.topService, 'Corte'); assert.equal(h.topCount, 2); assert.equal(h.uniqueClients, 2);
+        const semNada = R.periodHighlights([{ date: '2026-11-02', service: 'Corte' }, { date: '2026-11-03', service: 'Corte' }], '2026-11-01', '2026-11-30');
+        assert.equal(semNada.uniqueClients, 0, 'sem telefone e sem nome não vira "um cliente"');
     });
 });
 

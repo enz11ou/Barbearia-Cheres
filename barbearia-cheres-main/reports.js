@@ -126,8 +126,8 @@
         entries.forEach(function (e) {
             if (e.date < from || e.date > to) return;
             count[e.service] = (count[e.service] || 0) + 1;
-            var key = String(e.phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '') || ('nome:' + e.name);
-            clients[key] = true;
+            var key = String(e.phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '') || (e.name ? 'nome:' + e.name : '');
+            if (key) clients[key] = true;
         });
         var top = Object.keys(count).sort(function (a, b) { return count[b] - count[a] || a.localeCompare(b); })[0] || '';
         return { topService: top, topCount: top ? count[top] : 0, uniqueClients: Object.keys(clients).length };

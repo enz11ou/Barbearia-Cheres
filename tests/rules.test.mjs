@@ -457,6 +457,7 @@ describe('financeiro por período', () => {
         await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-11-12', createdAt: 'x' }));
         await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-12-01' }));
         await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '12/11/2026' }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'Produtos', amount: 120, date: '2026-11-99' }));
         await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Sem data (antigo)', amount: 10 }));
     });
 });

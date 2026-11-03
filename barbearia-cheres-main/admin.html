@@ -287,14 +287,15 @@
             <!-- TAB: FINANCEIRO (junta a antiga Visão Geral; tudo segue o período escolhido) -->
             <div id="tab-analytics" class="dashboard-content hidden">
                 <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 mb-5">
-                    <div id="finPresets" class="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Escolher período">
-                        <button type="button" data-preset="today" onclick="setFinPreset('today')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Hoje</button>
-                        <button type="button" data-preset="yesterday" onclick="setFinPreset('yesterday')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Ontem</button>
-                        <button type="button" data-preset="week" onclick="setFinPreset('week')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Esta semana</button>
-                        <button type="button" data-preset="lastweek" onclick="setFinPreset('lastweek')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Semana passada</button>
-                        <button type="button" data-preset="month" onclick="setFinPreset('month')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Este mês</button>
-                        <button type="button" data-preset="lastmonth" onclick="setFinPreset('lastmonth')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Mês passado</button>
-                        <button type="button" data-preset="custom" onclick="setFinPreset('custom')" class="fin-preset shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition">Personalizado</button>
+                    <div id="finPresets" class="flex flex-wrap gap-2" role="group" aria-label="Escolher período">
+                        <button type="button" data-preset="today" onclick="setFinPreset('today')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Hoje</button>
+                        <button type="button" data-preset="yesterday" onclick="setFinPreset('yesterday')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Ontem</button>
+                        <button type="button" data-preset="week" onclick="setFinPreset('week')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Esta semana</button>
+                        <button type="button" data-preset="lastweek" onclick="setFinPreset('lastweek')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Semana passada</button>
+                        <button type="button" data-preset="month" onclick="setFinPreset('month')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Este mês</button>
+                        <button type="button" data-preset="lastmonth" onclick="setFinPreset('lastmonth')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Mês passado</button>
+                        <button type="button" data-preset="all" onclick="setFinPreset('all')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Tudo</button>
+                        <button type="button" data-preset="custom" onclick="setFinPreset('custom')" class="fin-preset min-h-11 px-4 py-2 rounded-full text-sm font-semibold border transition">Personalizado</button>
                     </div>
                     <form id="finCustom" onsubmit="event.preventDefault(); applyCustomPeriod();" class="hidden mt-4 flex flex-wrap items-end gap-3">
                         <div>
@@ -313,7 +314,7 @@
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Faturamento</p><p id="finTotal" class="text-2xl sm:text-3xl font-bold text-emerald-400">R$ 0,00</p><p id="finCount" class="text-xs text-zinc-500 mt-1"></p></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Despesas</p><p id="finExpTotal" class="text-2xl sm:text-3xl font-bold text-red-400">R$ 0,00</p><p id="finExpCount" class="text-xs text-zinc-500 mt-1"></p></div>
-                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Lucro</p><p id="finProfit" class="text-2xl sm:text-3xl font-bold text-amber-400">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Faturamento − despesas</p></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Lucro</p><p id="finProfit" class="text-2xl sm:text-3xl font-bold text-amber-400">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Faturamento − despesas (cada despesa conta no dia lançado)</p></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Ticket médio</p><p id="finAvg" class="text-2xl sm:text-3xl font-bold text-white">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Por atendimento</p></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
@@ -343,7 +344,7 @@
                             <label for="expAmount" class="sr-only">Valor (R$)</label>
                             <input type="text" id="expAmount" inputmode="decimal" required placeholder="R$" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
                             <label for="expDate" class="sr-only">Data da despesa</label>
-                            <input type="date" id="expDate" required class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                            <input type="date" id="expDate" required oninput="this.dataset.touched = '1'" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
                             <button type="submit" class="col-span-2 sm:col-span-3 sm:justify-self-start bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Adicionar despesa</button>
                         </form>
                         <div class="mb-2"></div>
@@ -1010,6 +1011,7 @@
             const btn = document.querySelector(`.dashboard-tab[onclick="switchDashboardTab('${tab}')"]`);
             if (btn) btn.classList.add('active');
             if (tab === 'today') renderToday();
+            if (tab === 'analytics' && finDirty) renderFinance();
             setTimeout(() => {
                 if (tab === 'analytics') {
                     [finDailyChart, finServiceChart, finHourlyChart, finUpcomingChart].forEach(c => c && c.resize());
@@ -2759,19 +2761,27 @@
         function currentFinRange() {
             const today = localToday();
             if (finPeriod.preset === 'custom' && finPeriod.from && finPeriod.to) return [finPeriod.from, finPeriod.to];
+            if (finPeriod.preset === 'all') {
+                // Do primeiro atendimento (ou despesa) registrado até hoje.
+                const dates = financeEntries().map(e => e.date);
+                Object.keys(expenses).forEach(m => dates.push(m + '-01'));
+                const first = dates.filter(Boolean).sort()[0];
+                return [first && first < today ? first : today, today];
+            }
             return CheresReports.presetRange(finPeriod.preset, today) || CheresReports.presetRange('month', today);
         }
 
         function setFinPreset(preset) {
             const custom = document.getElementById('finCustom');
             if (preset === 'custom') {
+                // Só mostra as datas; o período muda quando o André toca em "Aplicar" (com validação).
                 const [from, to] = currentFinRange();
                 const f = document.getElementById('finFrom'), t = document.getElementById('finTo');
-                if (!f.value) f.value = from;
-                if (!t.value) t.value = to;
+                f.value = from;
+                t.value = to;
                 custom.classList.remove('hidden');
-                finPeriod = { preset: 'custom', from: f.value, to: t.value };
                 f.focus();
+                return;
             } else {
                 custom.classList.add('hidden');
                 finPeriod = { preset, from: '', to: '' };
@@ -2784,14 +2794,14 @@
             const to = document.getElementById('finTo').value;
             if (!from || !to) { alert('Escolha as duas datas.'); return; }
             if (to < from) { alert('A data final precisa ser depois da inicial.'); return; }
-            if (CheresReports.dailySeries([], from, to).days.length > 366) { alert('Escolha um período de até 1 ano.'); return; }
+            if (CheresReports.dailySeries([], from, to).days.length > 366) { alert('Escolha um período de até 1 ano (para tudo, use o atalho "Tudo").'); return; }
             finPeriod = { preset: 'custom', from, to };
             renderFinance();
         }
 
         function periodLabel(from, to) {
             if (from === to) return `${CheresSchedule.DAY_NAMES[CheresSchedule.dayOfWeek(from)]}, ${formatDateBR(from)}`;
-            const days = CheresReports.dailySeries([], from, to).days.length;
+            const days = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1;
             return `${formatDateBR(from)} a ${formatDateBR(to)} · ${days} dias`;
         }
 
@@ -2802,8 +2812,18 @@
         }
 
         // ---- Financeiro: cartões, formas de pagamento, despesas e gráficos do período ----
+        // Só desenha com a aba visível (os gráficos custam caro); fora dela, marca para desenhar ao abrir.
+        let finDirty = true, finFrame = 0;
         function renderFinance() {
-            if (!document.getElementById('finTotal') || !adminDataStarted) return;
+            const tab = document.getElementById('tab-analytics');
+            if (!tab || !adminDataStarted) return;
+            if (tab.classList.contains('hidden')) { finDirty = true; return; }
+            if (finFrame) return;
+            // Junta várias chamadas seguidas (eventos do banco em rajada) num desenho só.
+            finFrame = setTimeout(() => { finFrame = 0; finDirty = false; drawFinance(); }, 30);
+        }
+
+        function drawFinance() {
             const [from, to] = currentFinRange();
             const entries = financeEntries();
             const sum = CheresReports.summarize(entries, from, to);
@@ -2847,7 +2867,7 @@
 
             // Despesas do período
             const dateInput = document.getElementById('expDate');
-            if (!dateInput.value) dateInput.value = localToday();
+            if (!dateInput.value || !dateInput.dataset.touched) dateInput.value = localToday();
             const list = document.getElementById('finExpenses');
             list.innerHTML = exp.length ? '' : '<p class="text-sm text-zinc-500">Nenhuma despesa lançada neste período.</p>';
             exp.forEach(e => {
@@ -2861,15 +2881,17 @@
             });
 
             // Faturamento por dia (agrupa por mês em períodos longos)
-            const series = CheresReports.dailySeries(entries, from, to);
+            const spanDays = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1;
             let labels, values;
-            if (series.days.length > 62) {
+            if (spanDays > 62) {
                 const byMonth = {};
-                series.days.forEach((d, i) => { const m = d.slice(0, 7); byMonth[m] = Math.round(((byMonth[m] || 0) + series.values[i]) * 100) / 100; });
+                for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = CheresReports.addDays(m + '-28', 4).slice(0, 7)) byMonth[m] = 0;
+                entries.forEach(e => { if (e.date >= from && e.date <= to) { const m = e.date.slice(0, 7); byMonth[m] = Math.round(((byMonth[m] || 0) + e.amount) * 100) / 100; } });
                 labels = Object.keys(byMonth).map(m => `${m.slice(5)}/${m.slice(0, 4)}`);
                 values = Object.values(byMonth);
                 put('finDailyTitle', 'Faturamento por mês');
             } else {
+                const series = CheresReports.dailySeries(entries, from, to);
                 labels = series.days.map(d => series.days.length <= 7 ? `${CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(d)]} ${d.slice(8)}` : `${d.slice(8)}/${d.slice(5, 7)}`);
                 values = series.values;
                 put('finDailyTitle', 'Faturamento por dia');
@@ -2908,6 +2930,10 @@
             });
         }
 
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && adminDataStarted) { finDirty = true; renderFinance(); renderToday(); }
+        });
+
         async function addExpense() {
             const label = document.getElementById('expLabel').value.trim();
             const amount = CheresAttendance.parseAmount(document.getElementById('expAmount').value);
@@ -2919,6 +2945,9 @@
                 await expensesRef.child(date.slice(0, 7)).push({ label: label.slice(0, 80), amount, date, createdAt: new Date().toISOString() });
                 document.getElementById('expLabel').value = '';
                 document.getElementById('expAmount').value = '';
+                const dateInput = document.getElementById('expDate');
+                dateInput.value = localToday();
+                delete dateInput.dataset.touched;
                 document.getElementById('expLabel').focus();
                 const [from, to] = currentFinRange();
                 if (date < from || date > to) showToast({ title: 'Despesa lançada', body: `Ela é de ${formatDateBR(date)}, fora do período que está na tela.`, kind: 'ok' });
