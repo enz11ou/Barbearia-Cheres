@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only database --project barbearia-cheres-test \"node --test tests/rules.test.mjs\""
+    "test": "npm run test:schedule && npm run test:rules",
+    "test:schedule": "node --test tests/schedule.test.mjs",
+    "test:rules": "firebase emulators:exec --only database --project barbearia-cheres-test \"node --test tests/rules.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

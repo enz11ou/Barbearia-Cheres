@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="schedule.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -242,7 +243,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-2">Data (Segunda a Sexta)</label>
+                            <label class="block text-sm font-medium mb-2">Data (<span id="openDaysLabel">Ter a Sáb</span>)</label>
                             <input type="date" id="bookingDate" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
                         </div>
                     </div>
@@ -514,8 +515,12 @@
         const blockedTimeSlotsRef = db.ref('blockedTimeSlots');
         const historyRef = db.ref('appointmentHistory');
         const bookedSlotsRef = db.ref('bookedSlots');
+        const scheduleRef = db.ref('settings/schedule');
+        const scheduleExceptionsRef = db.ref('scheduleExceptions');
 
         // ============ DATA STRUCTURES ============
+        let scheduleSettings = null;   // semana padrão salva pelo barbeiro (null = padrão do schedule.js)
+        let scheduleExceptions = {};   // datas especiais a partir de hoje
         let bookedSlots = {};   // só horários ocupados (sem dados pessoais)
         let myAppointments = [];
         let myHistory = [];
@@ -536,6 +541,29 @@
         }
 
         // ============ FIREBASE LISTENERS ============
+        // Redesenha as grades abertas (agendar e remarcar) quando o horário de funcionamento muda.
+        function refreshSlotGrids() {
+            const dateVal = document.getElementById('bookingDate').value;
+            if (dateVal) generateTimeSlots(dateVal);
+            if (rescheduleTarget) renderRescheduleSlots();
+        }
+
+        function updateOpenDaysText() {
+            const label = document.getElementById('openDaysLabel');
+            if (label) label.textContent = CheresSchedule.describeOpenDays(scheduleSettings);
+        }
+
+        scheduleRef.on('value', snapshot => {
+            scheduleSettings = snapshot.val();
+            updateOpenDaysText();
+            refreshSlotGrids();
+        });
+
+        scheduleExceptionsRef.orderByKey().startAt(localISODate()).on('value', snapshot => {
+            scheduleExceptions = snapshot.val() || {};
+            refreshSlotGrids();
+        });
+
         bookedSlotsRef.on('value', snapshot => {
             bookedSlots = snapshot.val() || {};
             const dateVal = document.getElementById('bookingDate').value;
@@ -576,9 +604,11 @@
             const result = { closedMessage: '', slots: [] };
             if (!date) return result;
 
-            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 1) {
-                result.closedMessage = '<i class="fa-solid fa-ban mr-2"></i>Fechado aos domingos e segundas';
+            const day = CheresSchedule.forDate(date, scheduleSettings, scheduleExceptions);
+            if (!day.open) {
+                result.closedMessage = day.source === 'exception'
+                    ? '<i class="fa-solid fa-calendar-xmark mr-2"></i>A barbearia não atende nesta data'
+                    : `<i class="fa-solid fa-ban mr-2"></i>Fechado neste dia da semana. Atendemos: ${escapeHtml(CheresSchedule.describeOpenDays(scheduleSettings))}`;
                 return result;
             }
             if (blockedDates.some(item => item.date === date)) {
@@ -586,10 +616,7 @@
                 return result;
             }
 
-            const times = [];
-            for (let h = 9; h <= 18; h++) { const hh = h.toString().padStart(2, '0'); times.push(`${hh}:00`); if (h < 18) times.push(`${hh}:30`); }
-
-            result.slots = times.map(time => {
+            result.slots = day.times.map(time => {
                 const blockedSlot = blockedTimeSlots.find(s => s.date === date && s.time === time);
                 let state = 'free';
                 if (isTimePast(date, time)) state = 'past';
@@ -598,6 +625,11 @@
                 return { time, state, reason: blockedSlot ? (blockedSlot.reason || 'Bloqueado') : '' };
             });
             return result;
+        }
+
+        // Confere de novo na hora de gravar (o barbeiro pode ter mudado o horário com a tela aberta).
+        function isSlotFree(date, time) {
+            return getDaySlots(date).slots.some(s => s.time === time && s.state === 'free');
         }
 
         function renderSlotButtons(container, date, onPick) {
@@ -673,8 +705,7 @@
             name = currentClient.name;
             phone = formatPhone(currentClient.phoneKey);
             const key = slotKey(date, time);
-            const isBlocked = blockedTimeSlots.some(s => s.date === date && s.time === time);
-            if (isBlocked || bookedSlots[key]) {
+            if (!isSlotFree(date, time)) {
                 alert('Este horário não está disponível!');
                 generateTimeSlots(date);
                 return;
@@ -1172,6 +1203,7 @@
             if (!a || !currentClient) return;
             if (date === a.date && time === a.time) { alert('Escolha um horário diferente do atual.'); return; }
             if (!requireVerified()) { closeRescheduleModal(); return; }
+            if (!isSlotFree(date, time)) { alert('Este horário não está mais disponível. Escolha outro.'); renderRescheduleSlots(); return; }
             if (!confirm(`Remarcar ${a.service} para ${formatBR(date)} às ${time}?`)) return;
 
             const newRef = bookedSlotsRef.child(slotKey(date, time));
@@ -1320,7 +1352,7 @@
 
         // ============ INITIALIZATION ============
         window.onload = () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = localISODate();
             const dateInput = document.getElementById('bookingDate');
             dateInput.setAttribute('min', today);
             dateInput.value = today;
