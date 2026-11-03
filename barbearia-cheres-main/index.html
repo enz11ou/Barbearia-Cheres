@@ -1237,7 +1237,8 @@
                     await appointmentsRef.child(a.key).update({
                         date, time,
                         rescheduledFrom: `${a.date} ${a.time}`,
-                        rescheduledAt: new Date().toISOString()
+                        rescheduledAt: new Date().toISOString(),
+                        rescheduledBy: null   // a última remarcação foi do cliente
                     });
                 } catch (e) {
                     newRef.remove();

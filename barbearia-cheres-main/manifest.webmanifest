@@ -4,9 +4,8 @@
   "description": "Agenda, atendimentos e clientes da Barbearia Cheres.",
   "lang": "pt-BR",
   "start_url": "/admin",
-  "scope": "/",
+  "scope": "/admin",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#f59e0b",
   "theme_color": "#27272a",
   "icons": [

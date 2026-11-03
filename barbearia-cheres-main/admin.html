@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Cheres">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -214,7 +214,7 @@
 
             <!-- TAB: HOJE (rotina do dia) -->
             <div id="tab-today" class="dashboard-content">
-                <div id="dayPicker" class="flex gap-2 overflow-x-auto pb-2 mb-4" role="tablist" aria-label="Escolher dia"></div>
+                <div id="dayPicker" class="flex gap-2 overflow-x-auto pb-2 mb-4" role="group" aria-label="Escolher dia"></div>
 
                 <div id="pendingBox" class="hidden bg-zinc-900 border border-amber-700/60 rounded-2xl p-4 sm:p-5 mb-5">
                     <div class="flex items-center justify-between gap-3 mb-3">
@@ -812,20 +812,39 @@
         }
 
         // ============ AUTO-CANCEL LOGIC ============
+        const movingToHistory = new Set();   // evita mover o mesmo registro duas vezes ao mesmo tempo
         function cleanupPastAppointments() {
             const today = localToday();   // data local: em UTC, depois das 21h o dia de hoje já contaria como passado
             appointments.forEach(app => {
-                if (app.date < today && app.key) {
-                    // Vai para o histórico como "pendente de confirmação", a menos que o barbeiro já
-                    // tenha marcado Atendido/Faltou. Nada vira "concluído" sozinho.
-                    historyRef.child(app.key).set({
-                        ...app, phoneKey: normalizePhone(app.phone), status: app.attendance || 'pending',
-                        completedDate: new Date().toISOString()
-                    });
-                    appointmentsRef.child(app.key).remove();
-                    bookedSlotsRef.child(slotKey(app.date, app.time)).remove();
-                }
+                if (!(app.date < today && app.key) || movingToHistory.has(app.key)) return;
+                movingToHistory.add(app.key);
+                moveToHistory(app.key).catch(err => console.error('Limpeza:', err)).finally(() => movingToHistory.delete(app.key));
             });
+        }
+
+        // Move com transação: o valor capturado é o mais recente do servidor (inclui um Atendido/Faltou
+        // marcado em outro aparelho) e o histórico é mesclado, sem apagar uma marcação já feita lá.
+        // Vai como "pendente de confirmação", a menos que já esteja marcado. Nada vira concluído sozinho.
+        async function moveToHistory(key) {
+            let captured = null;
+            // Devolver null (e não undefined) quando vier vazio: o vazio pode ser só falta de cache, e assim
+            // o servidor confere o valor real e reexecuta a função com ele.
+            const r = await appointmentsRef.child(key).transaction(cur => {
+                captured = cur;
+                return null;
+            }, undefined, false);
+            if (!r.committed || !captured) return;
+            const app = captured;
+            await historyRef.child(key).transaction(h => {
+                const prev = h || {};
+                return {
+                    ...app, ...prev, key,
+                    phoneKey: normalizePhone(app.phone || '') || app.phoneKey || '',
+                    status: prev.attendance || app.attendance || prev.status || 'pending',
+                    completedDate: prev.completedDate || new Date().toISOString()
+                };
+            }, undefined, false);
+            if (app.date && app.time) await bookedSlotsRef.child(slotKey(app.date, app.time)).remove().catch(() => {});
         }
 
         // ============ SINCRONIZAÇÃO DOS DADOS PÚBLICOS ============
@@ -1039,7 +1058,7 @@
 
         function getHourlyData() {
             const d = {};
-            appointments.forEach(app => {
+            appointments.filter(app => app.time).forEach(app => {
                 const h = app.time.split(':')[0];
                 d[h] = (d[h] || 0) + 1;
             });
@@ -1707,7 +1726,7 @@
             const container = document.getElementById('adminAppointments');
             container.innerHTML = '';
             const today = localToday();
-            const sorted = [...appointments].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+            const sorted = appointments.filter(a => a.date && a.time).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
             if (!sorted.length) {
                 container.innerHTML = '<p class="text-zinc-400 text-center py-10">Nenhum agendamento registrado ainda.</p>';
                 return;
@@ -2277,8 +2296,7 @@
                 const count = o.date ? appointments.filter(a => a.date === o.date).length : 0;
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.setAttribute('role', 'tab');
-                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
                 btn.className = `shrink-0 px-4 py-2.5 rounded-full text-sm font-semibold border transition ${on ? 'bg-amber-500 text-black border-amber-500' : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-amber-500'}`;
                 btn.textContent = o.label;
                 if (count) {
@@ -2400,6 +2418,10 @@
                 row.lastElementChild.appendChild(b);
                 box.appendChild(row);
             });
+            // Agendamentos que não couberam na grade (horário fora dos 30 min ou dois no mesmo horário).
+            const shown = new Set(times.map(t => dayApps.find(a => a.time === t)).filter(Boolean));
+            dayApps.filter(a => !shown.has(a)).sort((a, b) => a.time.localeCompare(b.time))
+                .forEach(a => box.appendChild(appointmentCard(a, 'appointments')));
             if (!box.children.length) box.innerHTML = '<p class="text-zinc-500 text-sm py-4 text-center">Sem horários neste dia.</p>';
         }
 
@@ -2443,7 +2465,8 @@
         // ---- Pendentes de confirmação (já passou e ninguém marcou) ----
         function pendingRecords() {
             const list = [
-                ...appointments.filter(a => a.date && a.time && CheresAttendance.outcome(a, isTimePast, false) === 'pending').map(rec => ({ rec, node: 'appointments' })),
+                ...appointments.filter(a => a.date && a.time && CheresAttendance.outcome(a, isTimePast, false) === 'pending'
+                    && isTimePast(a.date, addMinutes(a.time, CheresSchedule.SLOT_MINUTES))).map(rec => ({ rec, node: 'appointments' })),
                 ...appointmentHistory.filter(a => a.date && CheresAttendance.outcome(a, isTimePast, true) === 'pending').map(rec => ({ rec, node: 'appointmentHistory' }))
             ];
             return list.sort((x, y) => (y.rec.date + y.rec.time).localeCompare(x.rec.date + x.rec.time));
@@ -2492,6 +2515,29 @@
             modalOpener = null;
         }
 
+        // Grava a marcação só se o registro ainda existir. Se a limpeza diária acabou de movê-lo
+        // de "appointments" para "appointmentHistory", grava lá (nunca recria um registro incompleto).
+        // historyStatus: valor de "status" no histórico (pending, attended, noshow).
+        async function updateAttendanceRecord(node, rec, fields, historyStatus) {
+            // Vazio devolve null (não grava nada); o servidor reexecuta se o registro existir de verdade.
+            const apply = async n => {
+                const r = await db.ref(`${n}/${rec.key}`).transaction(cur => {
+                    if (!cur) return null;
+                    const next = { ...cur, ...fields };
+                    if (n === 'appointmentHistory') next.status = historyStatus;
+                    Object.keys(next).forEach(k => { if (next[k] === null) delete next[k]; });
+                    return next;
+                }, undefined, false);
+                return r.committed && r.snapshot.exists();
+            };
+            if (await apply(node)) return;
+            const other = node === 'appointments' ? 'appointmentHistory' : 'appointments';
+            if (await apply(other)) return;
+            await new Promise(res => setTimeout(res, 1200));   // pode estar no meio da mudança para o histórico
+            if (await apply('appointmentHistory')) return;
+            throw new Error('Agendamento não encontrado (pode ter sido apagado).');
+        }
+
         async function saveAttended() {
             if (!attendTarget) return;
             const { node, rec } = attendTarget;
@@ -2504,9 +2550,8 @@
                 attendanceAt: new Date().toISOString()
             };
             if (typeof rec.price !== 'number') update.price = CheresAttendance.listPrice(rec, servicePrices);
-            if (node === 'appointmentHistory') update.status = 'attended';
             try {
-                await db.ref(`${node}/${rec.key}`).update(update);
+                await updateAttendanceRecord(node, rec, update, 'attended');
                 closeAttendModal();
                 showToast({ title: 'Atendimento registrado', body: `${rec.name || 'Cliente'} · ${CheresAttendance.METHODS[method]} · ${money(amount)}`, kind: 'ok' });
             } catch (e) { failSave(e); }
@@ -2515,15 +2560,13 @@
         async function markNoShow(node, rec) {
             if (!confirm(`Marcar que ${rec.name || 'o cliente'} faltou (${formatDateBR(rec.date)} às ${rec.time})?`)) return;
             const update = { attendance: 'noshow', payment: null, attendanceAt: new Date().toISOString() };
-            if (node === 'appointmentHistory') update.status = 'noshow';
-            try { await db.ref(`${node}/${rec.key}`).update(update); } catch (e) { failSave(e); }
+            try { await updateAttendanceRecord(node, rec, update, 'noshow'); } catch (e) { failSave(e); }
         }
 
         async function undoAttendance(node, rec) {
             if (!confirm(`Desfazer a marcação de ${rec.name || 'cliente'} (${formatDateBR(rec.date)} às ${rec.time})? Ele volta para "pendente".`)) return;
             const update = { attendance: null, payment: null, attendanceAt: null };
-            if (node === 'appointmentHistory') update.status = 'pending';
-            try { await db.ref(`${node}/${rec.key}`).update(update); } catch (e) { failSave(e); }
+            try { await updateAttendanceRecord(node, rec, update, 'pending'); } catch (e) { failSave(e); }
         }
 
         // ---- Lembrete de amanhã ----
@@ -2560,7 +2603,8 @@
                     link.innerHTML = `<i class="fa-brands fa-whatsapp mr-1"></i>${done ? 'De novo' : 'Lembrar'}`;
                     link.setAttribute('aria-label', `Enviar lembrete para ${a.name || 'cliente'} no WhatsApp`);
                     link.addEventListener('click', () => {
-                        appointmentsRef.child(a.key).update({ remindedFor: `${a.date} ${a.time}` }).catch(err => console.error('Lembrete:', err));
+                        appointmentsRef.child(a.key).transaction(cur => (cur ? { ...cur, remindedFor: `${a.date} ${a.time}` } : null), undefined, false)
+                            .catch(err => console.error('Lembrete:', err));
                     });
                     row.appendChild(link);
                 }
@@ -2653,17 +2697,26 @@
                 const result = await newRef.transaction(cur => (cur ? undefined : owner));
                 if (!result.committed) { alert('Este horário acabou de ser ocupado. Escolha outro.'); refreshMoveSlots(); return; }
                 selfChanges.add(a.key);
+                let moved;
                 try {
-                    await appointmentsRef.child(a.key).update({
-                        date, time,
-                        rescheduledFrom: `${a.date} ${a.time}`,
-                        rescheduledAt: new Date().toISOString(),
-                        rescheduledBy: 'barber'
-                    });
+                    // Só remarca se o agendamento ainda existir e continuar no mesmo horário (o cliente pode ter
+                    // remarcado ou cancelado com a janela aberta).
+                    moved = await appointmentsRef.child(a.key).transaction(cur => {
+                        if (!cur) return null;   // sumiu (ou sem cache): não grava; o servidor confere
+                        if (cur.date !== a.date || cur.time !== a.time) return undefined;
+                        return { ...cur, date, time, rescheduledFrom: `${a.date} ${a.time}`, rescheduledAt: new Date().toISOString(), rescheduledBy: 'barber' };
+                    }, undefined, false);
                 } catch (e) {
                     selfChanges.delete(a.key);
                     newRef.remove();
                     throw e;
+                }
+                if (!moved.committed || !moved.snapshot.exists()) {
+                    selfChanges.delete(a.key);
+                    await newRef.remove().catch(() => {});
+                    closeMoveModal();
+                    alert('Este agendamento mudou enquanto a janela estava aberta (o cliente remarcou ou cancelou). Confira a agenda e tente de novo.');
+                    return;
                 }
                 await bookedSlotsRef.child(slotKey(a.date, a.time)).remove().catch(() => {});
                 closeMoveModal();
@@ -2690,10 +2743,11 @@
                 now.forEach((a, key) => {
                     const before = lastAppSnapshot.get(key);
                     if (!before) {
-                        if (a.createdBy !== 'barber') notify('Novo agendamento', `${a.name || 'Cliente'} · ${a.service || ''} — ${formatDateBR(a.date)} às ${a.time}`);
+                        if (a.createdBy !== 'barber') notify('Novo agendamento', `${a.name || 'Cliente'} · ${a.service || ''} — ${formatDateBR(a.date)} às ${a.time}`, `new-${key}`);
                     } else if (before.date !== a.date || before.time !== a.time) {
+                        const byPanel = a.rescheduledBy === 'barber' && a.rescheduledFrom === `${before.date} ${before.time}`;
                         if (selfChanges.has(key)) selfChanges.delete(key);
-                        else notify('Agendamento remarcado', `${a.name || 'Cliente'}: ${formatDateBR(before.date)} ${before.time} → ${formatDateBR(a.date)} às ${a.time}`);
+                        else if (!byPanel) notify('Agendamento remarcado', `${a.name || 'Cliente'}: ${formatDateBR(before.date)} ${before.time} → ${formatDateBR(a.date)} às ${a.time}`, `move-${key}-${a.date}${a.time}`);
                     }
                 });
             }
@@ -2704,18 +2758,18 @@
             if (knownCancelled) {
                 cancelledList.forEach(c => {
                     if (!knownCancelled.has(c.key) && c.cancelledBy === 'client') {
-                        notify('Agendamento cancelado', `${c.name || 'Cliente'} cancelou ${c.service || ''} — ${formatDateBR(c.date)} às ${c.time}`);
+                        notify('Agendamento cancelado', `${c.name || 'Cliente'} cancelou ${c.service || ''} — ${formatDateBR(c.date)} às ${c.time}`, `cancel-${c.key}`);
                     }
                 });
             }
             knownCancelled = new Set(cancelledList.map(c => c.key));
         }
 
-        function notify(title, body) {
+        function notify(title, body, tagKey) {
             showToast({ title, body, kind: 'alert', duration: 20000 });
             playChime();
             if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState === 'hidden') {
-                const opts = { body, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'cheres-' + Date.now() };
+                const opts = { body, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'cheres-' + (tagKey || Date.now()) };
                 // No Android a notificação precisa passar pelo service worker.
                 const viaSW = 'serviceWorker' in navigator
                     ? navigator.serviceWorker.getRegistration().then(reg => (reg ? reg.showNotification(title, opts).then(() => true) : false))
@@ -2728,7 +2782,6 @@
             const area = document.getElementById('toastArea');
             const t = document.createElement('div');
             t.className = `pointer-events-auto rounded-2xl border shadow-xl p-4 flex gap-3 items-start ${kind === 'alert' ? 'bg-zinc-900 border-amber-500' : 'bg-zinc-900 border-emerald-600'}`;
-            t.setAttribute('role', 'status');
             t.innerHTML = `<i class="fa-solid ${kind === 'alert' ? 'fa-bell text-amber-400' : 'fa-circle-check text-emerald-400'} mt-1"></i>
                 <div class="min-w-0 flex-1"><p class="font-bold toast-title"></p><p class="text-sm text-zinc-300 toast-body break-words"></p><div class="toast-action"></div></div>
                 <button type="button" class="text-zinc-400 hover:text-white px-1" aria-label="Fechar aviso"><i class="fa-solid fa-xmark"></i></button>`;
@@ -2758,7 +2811,8 @@
                 if (audioCtx.state === 'suspended') audioCtx.resume();
             } catch (_) { audioCtx = null; }
         }
-        document.addEventListener('pointerdown', unlockAudio, { once: true });
+        document.addEventListener('pointerdown', unlockAudio);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && audioCtx) unlockAudio(); });
 
         function playChime() {
             if (!audioCtx || audioCtx.state !== 'running') return;
@@ -2802,7 +2856,7 @@
 
         function registerPanelApp() {
             // Service worker mínimo: só para as notificações no Android. Não guarda nada offline.
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker:', err));
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/admin' }).catch(err => console.warn('Service worker:', err));
             updateAlertsButton();
         }
 

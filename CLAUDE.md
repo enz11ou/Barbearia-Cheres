@@ -46,6 +46,10 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
   - Visitas e total gasto contam só atendidos (valor pago). Para "tempo sem vir", pendente também conta.
   - O cliente vê falta como "Não compareceu" e pendente como "Concluído".
   - Avisos de agendar/remarcar/cancelar: comparam leituras do banco; o que o próprio painel faz não gera aviso.
+  - Gravações em registro que pode sumir (marcação, lembrete, remarcar, mudança para o histórico) usam transação
+    "só se existir". Na transação, devolver `null` (não `undefined`) quando vier vazio: vazio pode ser só falta de
+    cache, e `undefined` aborta sem consultar o servidor.
+  - As regras recusam `appointments/$id` sem `date` e `time`, mesmo do admin (um registro órfão travava o painel).
 
 ## Regras de segurança (não quebrar)
 - Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.
