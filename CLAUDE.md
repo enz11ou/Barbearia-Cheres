@@ -6,13 +6,14 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
 - `barbearia-cheres-main/index.html`: site público (agendar, conta do cliente, remarcar, cancelar).
 - `barbearia-cheres-main/admin.html`: painel do barbeiro (Hoje, agenda, horários, CRM, gráficos, bloqueios, administradores).
 - `barbearia-cheres-main/attendance.js`: **regra única de atendido/faltou/pendente e valor pago** (`window.CheresAttendance`),
-  usada pelo painel (CRM, tela Hoje) e pelo perfil do cliente.
+  usada pelo painel (CRM, tela Hoje) e pelo perfil do cliente. Também tem a **fidelidade** (`loyaltyStatus`).
+- `barbearia-cheres-main/reports.js`: financeiro (faturamento, ticket médio, formas de pagamento) e CSV (`window.CheresReports`), só no painel.
 - `barbearia-cheres-main/manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png`: "Adicionar à tela inicial" do painel
   (abre em `/admin`). `sw.js`: service worker mínimo só para notificações no Android (sem `fetch`, sem cache offline).
 - `barbearia-cheres-main/schedule.js`: **regra única dos horários** (`window.CheresSchedule`), carregada pelas duas páginas.
   Nunca escrever listas de horários fixas no HTML: usar `CheresSchedule.forDate(date, settings, exceptions)`.
 - `database.rules.json`: regras do Realtime Database (fonte única das regras).
-- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs` e `tests/attendance.test.mjs`: testes das regras de horário e de atendimento.
+- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`, `tests/attendance.test.mjs` e `tests/reports.test.mjs`: testes das funções puras.
 - `backups/` (fora do Git): backups do banco antes de mexer em dados existentes.
 
 ## Deploy
@@ -50,6 +51,16 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
     "só se existir". Na transação, devolver `null` (não `undefined`) quando vier vazio: vazio pode ser só falta de
     cache, e `undefined` aborta sem consultar o servidor.
   - As regras recusam `appointments/$id` sem `date` e `time`, mesmo do admin (um registro órfão travava o painel).
+
+- Gestão (Fase 4A):
+  - `clientNotes/{telefone}` = `{ notes, birthday: "MM-DD", updatedAt }` — só admin (anotações na ficha e na tela Hoje).
+  - `expenses/{AAAA-MM}/{id}` = `{ label, amount, createdAt }` — só admin. Lucro do mês = faturamento − despesas.
+  - Financeiro e gráficos: só atendidos, pelo valor pago (histórico antigo pela tabela, forma "não informada").
+  - Fidelidade: `settings/loyalty` = `{ every: 7, since: "2026-11-03" }` (público lê). Conta cortes atendidos
+    (serviço com "Corte" no nome) desde `since`. `loyalty/{telefone}/redeemed/{id}` = `{ date, at }`: admin grava, cliente lê o dele.
+  - Lista de espera: `waitlist/{data}/{telefone}` = `{ name, uid, createdAt, notifiedAt? }`. O cliente (e-mail confirmado)
+    entra/sai só da própria vaga; `notifiedAt` só admin. Dias passados são apagados pelo painel (dado temporário).
+  - Fica para a Fase 4B (depois da Fase 3): assinantes dos planos e receita dos planos.
 
 ## Regras de segurança (não quebrar)
 - Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.

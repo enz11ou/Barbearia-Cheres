@@ -47,7 +47,39 @@
         return Math.round(n * 100) / 100;
     }
 
+    // ---- Fidelidade ----
+    // Conta cortes atendidos (serviços com "Corte" no nome) a partir da data de início do programa.
+    var LOYALTY_DEFAULT = { every: 7, since: '2026-11-03' };
+
+    function isCut(service) { return /corte/i.test(String(service || '')); }
+
+    function loyaltySettings(saved) {
+        var every = saved && Number(saved.every);
+        var since = saved && typeof saved.since === 'string' ? saved.since : LOYALTY_DEFAULT.since;
+        return { every: every >= 1 && every <= 50 ? Math.floor(every) : LOYALTY_DEFAULT.every, since: since };
+    }
+
+    // records: lista de { date, service, outcome }; redeemedCount: brindes já usados.
+    function loyaltyStatus(records, redeemedCount, settings) {
+        var cfg = loyaltySettings(settings);
+        var cuts = (records || []).filter(function (r) {
+            return r.outcome === 'attended' && isCut(r.service) && String(r.date || '') >= cfg.since;
+        }).length;
+        var earned = Math.floor(cuts / cfg.every);
+        var used = Math.max(0, Number(redeemedCount) || 0);
+        return {
+            every: cfg.every, since: cfg.since, cuts: cuts, earned: earned, used: used,
+            available: Math.max(0, earned - used),
+            progress: cuts % cfg.every,                 // cortes rumo ao próximo brinde
+            remaining: cfg.every - (cuts % cfg.every)
+        };
+    }
+
     root.CheresAttendance = {
+        LOYALTY_DEFAULT: LOYALTY_DEFAULT,
+        isCut: isCut,
+        loyaltySettings: loyaltySettings,
+        loyaltyStatus: loyaltyStatus,
         METHODS: METHODS,
         outcome: outcome,
         listPrice: listPrice,

@@ -373,3 +373,71 @@ describe('correções da revisão (fase 2)', () => {
         if (r.snapshot.exists()) throw new Error('não deveria criar registro');
     });
 });
+
+describe('gestão do negócio (fase 4A)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    const bob = () => db(BOB.uid, { email: 'bob@x.com', email_verified: true });
+    const entry = (who, name = 'Cliente') => ({ name, uid: who.uid, createdAt: '2026-11-03T10:00:00Z' });
+
+    test('anotações e aniversário: só o barbeiro lê e grava', async () => {
+        await assertSucceeds(set(ref(andre(), `clientNotes/${ALICE.phone}`), { notes: 'máquina 2 nas laterais, degradê baixo', birthday: '03-15', updatedAt: 'x' }));
+        await assertSucceeds(get(ref(andre(), `clientNotes/${ALICE.phone}`)));
+        await assertFails(get(ref(alice(), `clientNotes/${ALICE.phone}`)));
+        await assertFails(get(ref(db(), 'clientNotes')));
+        await assertFails(set(ref(alice(), `clientNotes/${ALICE.phone}`), { notes: 'x' }));
+    });
+    test('anotações: formato validado', async () => {
+        await assertFails(set(ref(andre(), `clientNotes/${ALICE.phone}`), { birthday: '15-03' }));
+        await assertFails(set(ref(andre(), `clientNotes/${ALICE.phone}`), { notes: 'x'.repeat(1001) }));
+        await assertFails(set(ref(andre(), 'clientNotes/abc'), { notes: 'x' }));
+        await assertFails(set(ref(andre(), `clientNotes/${ALICE.phone}`), { notes: 'x', extra: 1 }));
+    });
+    test('despesas: só o barbeiro, formato validado', async () => {
+        await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Aluguel', amount: 800, category: 'Fixo', createdAt: 'x' }));
+        await assertFails(push(ref(andre(), 'expenses/2026-13'), { label: 'x', amount: 1 }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: 'x', amount: -5 }));
+        await assertFails(push(ref(andre(), 'expenses/2026-11'), { label: '', amount: 5 }));
+        await assertFails(push(ref(alice(), 'expenses/2026-11'), { label: 'x', amount: 1 }));
+        await assertFails(get(ref(alice(), 'expenses')));
+    });
+    test('fidelidade: barbeiro marca brinde; cliente lê só o dele e não grava', async () => {
+        await assertSucceeds(push(ref(andre(), `loyalty/${ALICE.phone}/redeemed`), { date: '2026-11-20', at: 'x' }));
+        await assertSucceeds(get(ref(alice(), `loyalty/${ALICE.phone}`)));
+        await assertFails(get(ref(alice(), `loyalty/${BOB.phone}`)));
+        await assertFails(get(ref(db(), `loyalty/${ALICE.phone}`)));
+        await assertFails(push(ref(alice(), `loyalty/${ALICE.phone}/redeemed`), { date: '2026-11-20', at: 'x' }));
+        await assertFails(push(ref(andre(), `loyalty/${ALICE.phone}/redeemed`), { date: 'ontem', at: 'x' }));
+    });
+    test('fidelidade: número de cortes em settings (público para ler, só barbeiro grava)', async () => {
+        await assertSucceeds(set(ref(andre(), 'settings/loyalty'), { every: 7, since: '2026-11-03' }));
+        await assertSucceeds(get(ref(db(), 'settings/loyalty')));
+        await assertFails(set(ref(andre(), 'settings/loyalty'), { every: 0 }));
+        await assertFails(set(ref(andre(), 'settings/loyalty'), { every: 7.5 }));
+        await assertFails(set(ref(alice(), 'settings/loyalty'), { every: 1 }));
+    });
+    test('lista de espera: cliente entra e sai só com o próprio telefone', async () => {
+        await assertSucceeds(set(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`), entry(ALICE, 'Alice')));
+        await assertSucceeds(get(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`)));
+        await assertSucceeds(remove(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`)));
+        await assertFails(set(ref(alice(), `waitlist/2026-11-20/${BOB.phone}`), entry(ALICE)));
+        await assertFails(set(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`), entry(BOB)));
+    });
+    test('lista de espera: cliente não vê a lista dos outros nem marca "avisado"', async () => {
+        await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database(), `waitlist/2026-11-20/${BOB.phone}`), entry(BOB, 'Bob')));
+        await assertFails(get(ref(alice(), 'waitlist/2026-11-20')));
+        await assertFails(get(ref(alice(), `waitlist/2026-11-20/${BOB.phone}`)));
+        await assertFails(remove(ref(alice(), `waitlist/2026-11-20/${BOB.phone}`)));
+        await assertFails(set(ref(alice(), `waitlist/2026-11-20/${ALICE.phone}`), { ...entry(ALICE), notifiedAt: 'x' }));
+        await assertFails(get(ref(db(), 'waitlist')));
+    });
+    test('lista de espera: precisa de e-mail confirmado; barbeiro vê, marca avisado e remove', async () => {
+        const naoConfirmada = db(ALICE.uid, { email: 'alice@x.com', email_verified: false });
+        await assertFails(set(ref(naoConfirmada, `waitlist/2026-11-20/${ALICE.phone}`), entry(ALICE)));
+        await env.withSecurityRulesDisabled(ctx => set(ref(ctx.database(), `waitlist/2026-11-20/${BOB.phone}`), entry(BOB, 'Bob')));
+        await assertSucceeds(get(ref(andre(), 'waitlist')));
+        await assertSucceeds(update(ref(andre(), `waitlist/2026-11-20/${BOB.phone}`), { notifiedAt: '2026-11-19T10:00:00Z' }));
+        await assertSucceeds(remove(ref(andre(), 'waitlist/2026-11-20')));
+        await assertFails(set(ref(andre(), 'waitlist/20-11-2026/21922222222'), entry(BOB)));
+    });
+});

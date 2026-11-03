@@ -23,6 +23,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="schedule.js"></script>
     <script src="attendance.js"></script>
+    <script src="reports.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -202,7 +203,7 @@
                     <i class="fa-solid fa-clock"></i> Horários
                 </button>
                 <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie"></i> Analytics
+                    <i class="fa-solid fa-sack-dollar"></i> Financeiro
                 </button>
                 <button onclick="switchDashboardTab('crm')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-users"></i> CRM
@@ -233,12 +234,23 @@
                     <div id="dayTimeline" class="space-y-2 mt-3"></div>
                 </div>
 
-                <div id="reminderBox" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                <div id="waitlistAdminBox" class="hidden bg-zinc-900 border border-amber-700/60 rounded-2xl p-4 sm:p-5 mb-5">
+                    <h3 class="text-xl font-bold text-amber-500 mb-1"><i class="fa-solid fa-hourglass-half mr-2"></i>Lista de espera <span id="waitlistAdminCount" class="ml-1 bg-amber-500 text-black text-xs px-2 py-0.5 rounded-full align-middle"></span></h3>
+                    <p class="text-xs text-zinc-400 mb-3">Clientes que queriam este dia e não acharam horário. Se abrir uma vaga, avise pelo WhatsApp.</p>
+                    <div id="waitlistAdminList" class="space-y-2"></div>
+                </div>
+
+                <div id="reminderBox" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 mb-5">
                     <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
                         <h3 class="text-xl font-bold text-amber-500"><i class="fa-brands fa-whatsapp mr-2"></i>Lembrete de amanhã</h3>
                         <p id="reminderSummary" class="text-sm text-zinc-400"></p>
                     </div>
                     <div id="reminderList" class="space-y-2"></div>
+                </div>
+
+                <div id="birthdayBox" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
+                    <h3 class="text-xl font-bold text-amber-500 mb-3"><i class="fa-solid fa-cake-candles mr-2"></i>Aniversariantes da semana</h3>
+                    <div id="birthdayList" class="space-y-2"></div>
                 </div>
             </div>
 
@@ -248,7 +260,7 @@
                     <div class="stat-card p-6 rounded-2xl">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-zinc-400 text-sm mb-1">Receita Total</p>
+                                <p class="text-zinc-400 text-sm mb-1">Faturamento total</p>
                                 <p id="totalRevenue" class="text-3xl font-bold text-amber-500">R$ 0,00</p>
                             </div>
                             <i class="fa-solid fa-money-bill-wave text-4xl text-amber-500 opacity-30"></i>
@@ -285,7 +297,7 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita por Serviço</h3>
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento por serviço</h3>
                         <div class="chart-container">
                             <canvas id="serviceChart"></canvas>
                         </div>
@@ -332,31 +344,70 @@
                 </div>
             </div>
 
-            <!-- TAB: ANALYTICS -->
+            <!-- TAB: FINANCEIRO (antiga Analytics) -->
             <div id="tab-analytics" class="dashboard-content hidden">
+                <p class="text-xs text-zinc-500 mb-4">Conta só atendimentos marcados como Atendido, pelo valor pago. O histórico anterior a 03/11/2026 entra pelo preço de tabela, com forma de pagamento "não informada".</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Hoje</p><p id="finToday" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finTodayCount" class="text-xs text-zinc-500 mt-1"></p></div>
+                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Esta semana</p><p id="finWeek" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finWeekCount" class="text-xs text-zinc-500 mt-1"></p></div>
+                    <div class="stat-card p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Este mês</p><p id="finMonthTotal" class="text-3xl font-bold text-amber-500">R$ 0,00</p><p id="finMonthCount" class="text-xs text-zinc-500 mt-1"></p></div>
+                </div>
+
+                <div class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                        <h3 class="text-xl font-bold text-amber-500"><i class="fa-solid fa-calendar mr-2"></i>Resumo do mês</h3>
+                        <label class="flex items-center gap-2 text-sm text-zinc-400">Mês
+                            <input type="month" id="finMonth" onchange="renderFinance()" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Faturamento</p><p id="finSelTotal" class="text-xl font-bold text-emerald-400">R$ 0,00</p></div>
+                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Despesas</p><p id="finSelExpenses" class="text-xl font-bold text-red-400">R$ 0,00</p></div>
+                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Lucro</p><p id="finSelProfit" class="text-xl font-bold text-amber-400">R$ 0,00</p></div>
+                        <div class="bg-zinc-800 rounded-xl p-4"><p class="text-xs text-zinc-400">Ticket médio</p><p id="finSelAvg" class="text-xl font-bold text-white">R$ 0,00</p><p id="finSelCount" class="text-[11px] text-zinc-500"></p></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-sm font-semibold text-zinc-300 mb-3">Por forma de pagamento</h4>
+                            <div id="finMethods" class="space-y-3"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-zinc-300 mb-3">Despesas do mês</h4>
+                            <form onsubmit="event.preventDefault(); addExpense();" class="grid grid-cols-2 sm:grid-cols-[1fr_7rem_auto] gap-2 mb-3">
+                                <label for="expLabel" class="sr-only">Descrição da despesa</label>
+                                <input type="text" id="expLabel" maxlength="80" required placeholder="Ex.: aluguel, produtos" class="col-span-2 sm:col-span-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                                <label for="expAmount" class="sr-only">Valor (R$)</label>
+                                <input type="text" id="expAmount" inputmode="decimal" required placeholder="R$" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500">
+                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2.5 rounded-xl font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Adicionar</button>
+                            </form>
+                            <div id="finExpenses" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita Semanal</h3>
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento da semana (por dia)</h3>
                         <div class="chart-container">
                             <canvas id="weekChart"></canvas>
                         </div>
                         <p id="weekRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
                     </div>
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Receita Mensal</h3>
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento do mês (por dia)</h3>
                         <div class="chart-container">
                             <canvas id="monthChart"></canvas>
                         </div>
                         <p id="monthRevenue" class="text-center text-lg font-bold text-green-500 mt-4">Total: R$ 0,00</p>
                     </div>
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Distribuição de Serviços</h3>
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Faturamento por serviço (mês)</h3>
                         <div class="chart-container">
                             <canvas id="serviceDistributionChart"></canvas>
                         </div>
                     </div>
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-xl font-bold mb-4 text-amber-500">Agendamentos por Hora</h3>
+                        <h3 class="text-xl font-bold mb-4 text-amber-500">Atendimentos por horário</h3>
                         <div class="chart-container">
                             <canvas id="hourlyChart"></canvas>
                         </div>
@@ -410,9 +461,15 @@
                 </div>
 
                 <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-2xl font-bold text-amber-500">Gestão de Clientes</h3>
-                        <span id="crmClientCount" class="text-zinc-400 text-sm"></span>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-amber-500">Gestão de Clientes</h3>
+                            <span id="crmClientCount" class="text-zinc-400 text-sm"></span>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="exportClientsCsv()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-csv mr-1 text-emerald-400"></i>Exportar clientes</button>
+                            <button type="button" onclick="exportAppointmentsCsv()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-file-csv mr-1 text-emerald-400"></i>Exportar atendimentos</button>
+                        </div>
                     </div>
                     <div id="crmTagSummary" class="mb-5 flex flex-wrap gap-2"></div>
                     <div class="mb-6 flex flex-col sm:flex-row gap-4">
@@ -606,6 +663,18 @@
                         </div>
                     </div>
 
+                    <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                        <h3 class="text-xl font-bold mb-2 text-amber-500"><i class="fa-solid fa-gift mr-2"></i>Fidelidade</h3>
+                        <p class="text-zinc-400 text-sm mb-4">A cada quantos cortes atendidos o cliente ganha 1 corte grátis. Contam os serviços com "Corte" no nome, a partir de <span id="loyaltySince"></span>.</p>
+                        <form onsubmit="event.preventDefault(); saveLoyaltySettings();" class="flex gap-3 items-end">
+                            <div class="flex-1">
+                                <label for="loyaltyEvery" class="block text-xs text-zinc-400 mb-1">Cortes para 1 grátis</label>
+                                <input type="number" id="loyaltyEvery" min="1" max="50" step="1" required class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-500">
+                            </div>
+                            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl font-bold transition">Salvar</button>
+                        </form>
+                    </div>
+
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 lg:col-span-2">
                         <h3 class="text-xl font-bold mb-2 text-amber-500">
                             <i class="fa-solid fa-rotate mr-2"></i>Sincronizar dados do site
@@ -771,6 +840,12 @@
         const clientsRef = db.ref('clients');     // contas criadas pelos clientes no site
         const scheduleRef = db.ref('settings/schedule');           // semana padrão
         const scheduleExceptionsRef = db.ref('scheduleExceptions'); // datas especiais
+        const clientNotesRef = db.ref('clientNotes');      // anotações e aniversário (só o barbeiro)
+        const expensesRef = db.ref('expenses');            // despesas por mês
+        const loyaltyRef = db.ref('loyalty');              // brindes de fidelidade usados
+        const loyaltySettingsRef = db.ref('settings/loyalty');
+        const waitlistRef = db.ref('waitlist');            // lista de espera por dia
+        let clientNotes = {}, expenses = {}, loyaltyData = {}, loyaltyCfg = null, waitlist = {};
 
         // ============ DATA STRUCTURES ============
         let scheduleSettings = null;   // null = padrão do schedule.js (ter a sáb, 09:00 a 18:00)
@@ -955,6 +1030,12 @@
                 onScheduleDataChange();
             }, sessionLost);
 
+            clientNotesRef.on('value', snap => { clientNotes = snap.val() || {}; refreshCrmDetail(); renderToday(); }, sessionLost);
+            expensesRef.on('value', snap => { expenses = snap.val() || {}; renderFinance(); }, sessionLost);
+            loyaltyRef.on('value', snap => { loyaltyData = snap.val() || {}; refreshCrmDetail(); renderToday(); }, sessionLost);
+            loyaltySettingsRef.on('value', snap => { loyaltyCfg = snap.val(); renderLoyaltySettings(); refreshCrmDetail(); renderToday(); }, sessionLost);
+            waitlistRef.on('value', snap => { waitlist = snap.val() || {}; renderToday(); cleanupPastWaitlist(); }, sessionLost);
+
             clientsRef.on('value', snapshot => {
                 siteClients = [];
                 snapshot.forEach(child => { siteClients.push({ key: child.key, ...child.val() }); });
@@ -1010,16 +1091,15 @@
         }
 
         function calculateTotalRevenue() {
-            const all = [...appointments, ...appointmentHistory];
-            const total = all.reduce((sum, app) => sum + (servicePrices[app.service] || 0), 0);
-            document.getElementById('totalRevenue').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            const total = financeEntries().reduce((sum, e) => sum + e.amount, 0);
+            document.getElementById('totalRevenue').textContent = money(total);
         }
 
         // ============ CHARTS ============
-        function getServiceData() {
-            const all = [...appointments, ...appointmentHistory];
+        function getServiceData(from, to) {
             const d = {};
-            all.forEach(app => { d[app.service] = (d[app.service] || 0) + (servicePrices[app.service] || 0); });
+            financeEntries().filter(e => (!from || e.date >= from) && (!to || e.date <= to))
+                .forEach(e => { d[e.service] = Math.round(((d[e.service] || 0) + e.amount) * 100) / 100; });
             return d;
         }
 
@@ -1030,36 +1110,23 @@
         }
 
         function getWeeklyRevenue() {
-            const all = [...appointments, ...appointmentHistory];
-            const today = new Date();
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay());
-            let total = 0;
-            all.forEach(app => {
-                const d = new Date(app.date);
-                if (d >= weekStart && d <= new Date()) total += servicePrices[app.service] || 0;
-            });
-            document.getElementById('weekRevenue').textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            const [from, to] = CheresReports.weekRange(localToday());
+            const total = CheresReports.summarize(financeEntries(), from, to).total;
+            document.getElementById('weekRevenue').textContent = `Total: ${money(total)}`;
             return total;
         }
 
         function getMonthlyRevenue() {
-            const all = [...appointments, ...appointmentHistory];
-            const today = new Date();
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            let total = 0;
-            all.forEach(app => {
-                const d = new Date(app.date);
-                if (d >= monthStart && d <= new Date()) total += servicePrices[app.service] || 0;
-            });
-            document.getElementById('monthRevenue').textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            const [from, to] = CheresReports.monthRange(localToday());
+            const total = CheresReports.summarize(financeEntries(), from, to).total;
+            document.getElementById('monthRevenue').textContent = `Total: ${money(total)}`;
             return total;
         }
 
         function getHourlyData() {
             const d = {};
-            appointments.filter(app => app.time).forEach(app => {
-                const h = app.time.split(':')[0];
+            financeEntries().filter(e => e.time).forEach(e => {
+                const h = e.time.split(':')[0];
                 d[h] = (d[h] || 0) + 1;
             });
             return d;
@@ -1074,6 +1141,7 @@
             updateMonthChart();
             updateServiceDistributionChart();
             updateHourlyChart();
+            renderFinance();
         }
 
         const CHART_COLORS = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#f97316','#06b6d4','#84cc16'];
@@ -1106,47 +1174,53 @@
             });
         }
 
+        // Faturamento por dia da semana atual (domingo a sábado).
         function updateWeekChart() {
-            const data = getServiceData();
-            const labels = Object.keys(data);
-            const values = Object.values(data);
+            const [from] = CheresReports.weekRange(localToday());
+            const entries = financeEntries();
+            const days = Array.from({ length: 7 }, (_, i) => addDaysISO(from, i));
+            const values = days.map(d => CheresReports.summarize(entries, d, d).total);
             if (weekChart) weekChart.destroy();
             const ctx = document.getElementById('weekChart');
             if (!ctx) return;
             weekChart = new Chart(ctx, {
-                type: 'pie',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
+                type: 'bar',
+                data: { labels: days.map(d => CheresSchedule.DAY_SHORT[CheresSchedule.dayOfWeek(d)] + ' ' + d.slice(8)), datasets: [{ label: 'Faturamento (R$)', data: values, backgroundColor: '#f59e0b', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
             });
             getWeeklyRevenue();
         }
 
+        // Faturamento por dia do mês atual.
         function updateMonthChart() {
-            const data = getServiceData();
-            const labels = Object.keys(data);
-            const values = Object.values(data);
+            const [from, to] = CheresReports.monthRange(localToday());
+            const entries = financeEntries();
+            const days = [];
+            for (let d = from; d <= to; d = addDaysISO(d, 1)) days.push(d);
+            const values = days.map(d => CheresReports.summarize(entries, d, d).total);
             if (monthChart) monthChart.destroy();
             const ctx = document.getElementById('monthChart');
             if (!ctx) return;
             monthChart = new Chart(ctx, {
-                type: 'pie',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ data: values.length ? values : [1], backgroundColor: CHART_COLORS, borderColor: '#18181b', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ddd', font: { size: 12 } } } } }
+                type: 'bar',
+                data: { labels: days.map(d => d.slice(8)), datasets: [{ label: 'Faturamento (R$)', data: values, backgroundColor: '#10b981', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
             });
             getMonthlyRevenue();
         }
 
         function updateServiceDistributionChart() {
-            const data = getServiceData();
-            const labels = Object.keys(data);
-            const values = Object.values(data);
+            const [from, to] = CheresReports.monthRange(localToday());
+            const data = getServiceData(from, to);
+            const labels = Object.keys(data).sort((a, b) => data[b] - data[a]);
+            const values = labels.map(l => data[l]);
             if (serviceDistributionChart) serviceDistributionChart.destroy();
             const ctx = document.getElementById('serviceDistributionChart');
             if (!ctx) return;
             serviceDistributionChart = new Chart(ctx, {
                 type: 'bar',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Receita (R$)', data: values.length ? values : [0], backgroundColor: '#10b981', borderColor: '#059669', borderWidth: 2, borderRadius: 8 }] },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Faturamento (R$)', data: values.length ? values : [0], backgroundColor: '#10b981', borderColor: '#059669', borderWidth: 2, borderRadius: 8 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' }, beginAtZero: true } } }
             });
         }
 
@@ -1159,7 +1233,7 @@
             if (!ctx) return;
             hourlyChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Agendamentos', data: values.length ? values : [0], borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#8b5cf6', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6 }] },
+                data: { labels: labels.length ? labels : ['Sem dados'], datasets: [{ label: 'Atendimentos', data: values.length ? values : [0], borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#8b5cf6', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#333' } }, x: { ticks: { color: '#999' }, grid: { color: '#333' } } } }
             });
         }
@@ -1510,6 +1584,7 @@
                     ${client.manual && !client.hasAccount ? `<button onclick="deleteContact('${client.phoneKey}')" class="bg-zinc-700 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold transition text-sm"><i class="fa-solid fa-trash mr-1"></i> Excluir cadastro</button>` : ''}
                 </div>
                 ${recallMessage(client) ? `<div class="bg-zinc-900 border border-green-800/60 rounded-xl p-3 mb-6 text-sm"><p class="text-xs text-green-400 mb-1">Mensagem pronta (você pode editar no WhatsApp antes de enviar):</p><p class="text-zinc-300">${escapeHtml(recallMessage(client))}</p></div>` : ''}
+                ${clientExtrasHtml(client)}
                 <h5 class="text-sm font-semibold text-zinc-300 mb-3">Histórico de cortes e serviços:</h5>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -2281,6 +2356,8 @@
             renderDayPicker();
             renderPending();
             renderReminders();
+            renderBirthdays();
+            renderWaitlistAdmin(todaySelection === 'week' ? null : selectedDate());
             if (todaySelection === 'week') renderWeek(); else renderDay(selectedDate());
         }
 
@@ -2338,6 +2415,7 @@
                     <div class="flex flex-wrap items-center gap-1.5 mb-1">${chips.join('')}</div>
                     <p class="font-semibold text-white break-words">${escapeHtml(rec.name || 'Cliente')}</p>
                     <p class="text-sm text-zinc-300">${escapeHtml(rec.service || '')} <span class="text-zinc-500">· ${money(price)}</span></p>
+                    ${cardExtrasHtml(pk, rec.date)}
                     ${pk ? `<p class="text-sm mt-1 flex flex-wrap gap-x-4 gap-y-1">
                         <a href="tel:+55${pk}" class="text-zinc-300 hover:text-white"><i class="fa-solid fa-phone mr-1 text-xs"></i>${escapeHtml(formatPhone(pk))}</a>
                         <a href="${escapeHtml(waLink(pk))}" target="_blank" rel="noopener" class="text-green-400 hover:text-green-300"><i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp</a>
@@ -2758,7 +2836,9 @@
             if (knownCancelled) {
                 cancelledList.forEach(c => {
                     if (!knownCancelled.has(c.key) && c.cancelledBy === 'client') {
-                        notify('Agendamento cancelado', `${c.name || 'Cliente'} cancelou ${c.service || ''} — ${formatDateBR(c.date)} às ${c.time}`, `cancel-${c.key}`);
+                        const waiting = Object.keys(waitlist[c.date] || {}).length;
+                        notify('Agendamento cancelado', `${c.name || 'Cliente'} cancelou ${c.service || ''} — ${formatDateBR(c.date)} às ${c.time}` +
+                            (waiting ? ` · ${waiting} na lista de espera deste dia (veja na aba Hoje)` : ''), `cancel-${c.key}`);
                     }
                 });
             }
@@ -2871,6 +2951,347 @@
             if (!document.getElementById('attendModal').classList.contains('hidden')) closeAttendModal();
             if (!document.getElementById('moveModal').classList.contains('hidden')) closeMoveModal();
         });
+
+        // ============ FINANCEIRO ============
+        // Fonte única: atendimentos marcados (valor pago) + histórico antigo (preço de tabela). Ver reports.js.
+        function financeEntries() {
+            return CheresReports.attendedEntries(appointments, appointmentHistory, servicePrices, isTimePast);
+        }
+
+        const METHOD_STYLE = { pix: ['Pix', 'bg-emerald-500'], cash: ['Dinheiro', 'bg-amber-500'], card: ['Cartão', 'bg-blue-500'], unknown: ['Não informado', 'bg-zinc-500'] };
+
+        function renderFinance() {
+            if (!document.getElementById('finToday') || !adminDataStarted) return;
+            const entries = financeEntries();
+            const today = localToday();
+            const put = (id, text) => { document.getElementById(id).textContent = text; };
+            const count = n => `${n} atendimento${n === 1 ? '' : 's'}`;
+            const d = CheresReports.summarize(entries, today, today);
+            const w = CheresReports.summarize(entries, ...CheresReports.weekRange(today));
+            const m = CheresReports.summarize(entries, ...CheresReports.monthRange(today));
+            put('finToday', money(d.total)); put('finTodayCount', count(d.count));
+            put('finWeek', money(w.total)); put('finWeekCount', count(w.count));
+            put('finMonthTotal', money(m.total)); put('finMonthCount', count(m.count));
+
+            const monthInput = document.getElementById('finMonth');
+            if (!monthInput.value) monthInput.value = today.slice(0, 7);
+            const month = monthInput.value;
+            const sel = CheresReports.summarize(entries, ...CheresReports.monthRange(month + '-01'));
+            const monthExpenses = expenses[month] || {};
+            const spent = CheresReports.sumExpenses(monthExpenses);
+            put('finSelTotal', money(sel.total));
+            put('finSelExpenses', money(spent));
+            put('finSelProfit', money(sel.total - spent));
+            document.getElementById('finSelProfit').className = `text-xl font-bold ${sel.total - spent < 0 ? 'text-red-400' : 'text-amber-400'}`;
+            put('finSelAvg', money(sel.average));
+            put('finSelCount', count(sel.count));
+
+            const methods = document.getElementById('finMethods');
+            methods.innerHTML = '';
+            Object.keys(METHOD_STYLE).forEach(k => {
+                const value = sel.byMethod[k] || 0;
+                if (k === 'unknown' && !value) return;
+                const pct = sel.total ? Math.round((value / sel.total) * 100) : 0;
+                const [label, color] = METHOD_STYLE[k];
+                const row = document.createElement('div');
+                row.innerHTML = `<div class="flex justify-between text-sm mb-1"><span>${label}</span><span class="text-zinc-300">${money(value)} · ${pct}%</span></div>
+                    <div class="h-2.5 bg-zinc-800 rounded-full overflow-hidden"><div class="h-full ${color} rounded-full" style="width:${pct}%"></div></div>`;
+                methods.appendChild(row);
+            });
+
+            const list = document.getElementById('finExpenses');
+            const keys = Object.keys(monthExpenses).sort((a, b) => String(monthExpenses[b].createdAt || '').localeCompare(String(monthExpenses[a].createdAt || '')));
+            list.innerHTML = keys.length ? '' : '<p class="text-sm text-zinc-500">Nenhuma despesa lançada neste mês.</p>';
+            keys.forEach(k => {
+                const e = monthExpenses[k];
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-3 bg-zinc-800 rounded-xl px-3 py-2';
+                row.innerHTML = `<span class="min-w-0 truncate">${escapeHtml(e.label)}</span>
+                    <span class="flex items-center gap-2 shrink-0"><span class="text-red-300">${money(e.amount)}</span>
+                    <button type="button" class="text-zinc-400 hover:text-red-400 w-8 h-8" aria-label="Excluir despesa ${escapeHtml(e.label)}"><i class="fa-solid fa-trash"></i></button></span>`;
+                row.querySelector('button').onclick = () => removeExpense(month, k, e);
+                list.appendChild(row);
+            });
+        }
+
+        async function addExpense() {
+            const month = document.getElementById('finMonth').value || localToday().slice(0, 7);
+            const label = document.getElementById('expLabel').value.trim();
+            const amount = CheresAttendance.parseAmount(document.getElementById('expAmount').value);
+            if (!label) { alert('Descreva a despesa.'); return; }
+            if (amount === null) { alert('Informe o valor (ex.: 800 ou 150,50).'); return; }
+            try {
+                await expensesRef.child(month).push({ label: label.slice(0, 80), amount, createdAt: new Date().toISOString() });
+                document.getElementById('expLabel').value = '';
+                document.getElementById('expAmount').value = '';
+                document.getElementById('expLabel').focus();
+            } catch (e) { failSave(e); }
+        }
+
+        async function removeExpense(month, key, e) {
+            if (!confirm(`Excluir a despesa "${e.label}" (${money(e.amount)})?`)) return;
+            try { await expensesRef.child(`${month}/${key}`).remove(); } catch (err) { failSave(err); }
+        }
+
+        // ============ FICHA: ANOTAÇÕES, ANIVERSÁRIO E FIDELIDADE ============
+        function loyaltyFor(client) {
+            const records = [...client.completed, ...client.pending, ...client.noshows].map(x => ({ date: x.date, service: x.service, outcome: x.outcome }));
+            const redeemed = (loyaltyData[client.phoneKey] && loyaltyData[client.phoneKey].redeemed) || {};
+            return { ...CheresAttendance.loyaltyStatus(records, Object.keys(redeemed).length, loyaltyCfg), redeemed };
+        }
+
+        function birthdayText(mmdd) {
+            if (!mmdd) return '';
+            const [m, d] = mmdd.split('-');
+            return `${d}/${m}`;
+        }
+
+        function clientExtrasHtml(client) {
+            const note = clientNotes[client.phoneKey] || {};
+            const loyal = loyaltyFor(client);
+            const used = Object.entries(loyal.redeemed).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)));
+            const pct = Math.round((loyal.progress / loyal.every) * 100);
+            return `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                    <form onsubmit="event.preventDefault(); saveClientNotes('${client.phoneKey}');" class="bg-zinc-900 rounded-xl p-4">
+                        <p class="text-sm font-semibold text-zinc-300 mb-2"><i class="fa-solid fa-note-sticky mr-1 text-amber-400"></i>Anotações (só você vê)</p>
+                        <label for="cnNotes" class="sr-only">Anotações sobre o cliente</label>
+                        <textarea id="cnNotes" maxlength="1000" rows="3" placeholder="Ex.: máquina 2 nas laterais, degradê baixo" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">${escapeHtml(note.notes || '')}</textarea>
+                        <div class="flex items-end gap-3 mt-2">
+                            <div>
+                                <label for="cnBirthday" class="block text-xs text-zinc-400 mb-1">Aniversário (dia/mês)</label>
+                                <input id="cnBirthday" inputmode="numeric" maxlength="5" placeholder="DD/MM" value="${escapeHtml(birthdayText(note.birthday))}" class="w-28 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+                            </div>
+                            <button type="submit" class="ml-auto bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-xl text-sm font-bold transition">Salvar</button>
+                        </div>
+                    </form>
+                    <div class="bg-zinc-900 rounded-xl p-4">
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <p class="text-sm font-semibold text-zinc-300"><i class="fa-solid fa-gift mr-1 text-amber-400"></i>Fidelidade</p>
+                            <span class="text-sm font-bold">${loyal.progress} de ${loyal.every}</span>
+                        </div>
+                        <div class="h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-2" role="progressbar" aria-label="Cortes rumo ao brinde" aria-valuemin="0" aria-valuemax="${loyal.every}" aria-valuenow="${loyal.progress}"><div class="h-full bg-amber-500 rounded-full" style="width:${pct}%"></div></div>
+                        <p class="text-xs text-zinc-400 mb-3">${loyal.cuts} corte${loyal.cuts === 1 ? '' : 's'} desde ${formatDateBR(loyal.since)} · ${loyal.used} brinde${loyal.used === 1 ? '' : 's'} usado${loyal.used === 1 ? '' : 's'}</p>
+                        ${loyal.available
+                            ? `<button type="button" onclick="redeemReward('${client.phoneKey}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-gift mr-1"></i>Usar brinde (${loyal.available} disponível${loyal.available === 1 ? '' : 'is'})</button>`
+                            : `<p class="text-xs text-zinc-500">Faltam ${loyal.remaining} corte${loyal.remaining === 1 ? '' : 's'} para o próximo brinde.</p>`}
+                        ${used.length ? `<ul class="mt-3 space-y-1 text-xs text-zinc-400">${used.slice(0, 5).map(([id, r]) => `
+                            <li class="flex items-center justify-between gap-2"><span>Brinde usado em ${escapeHtml(formatDateBR(r.date))}</span>
+                            <button type="button" onclick="undoReward('${client.phoneKey}', '${escapeHtml(id)}')" class="text-zinc-500 hover:text-red-400 underline">desfazer</button></li>`).join('')}</ul>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        function refreshCrmDetail() {
+            const detail = document.getElementById('crmDetail');
+            if (detail && !detail.classList.contains('hidden') && detail.dataset.phone) {
+                // não redesenha enquanto o barbeiro digita a anotação
+                if (document.activeElement && ['cnNotes', 'cnBirthday'].includes(document.activeElement.id)) return;
+                showCRMDetail(detail.dataset.phone, true);
+            }
+        }
+
+        async function saveClientNotes(phoneKey) {
+            const notes = document.getElementById('cnNotes').value.trim().slice(0, 1000);
+            const raw = document.getElementById('cnBirthday').value.trim();
+            let birthday = '';
+            if (raw) {
+                const m = raw.match(/^(\d{1,2})\s*[\/\-.]\s*(\d{1,2})$/);
+                const dd = m && Number(m[1]), mm = m && Number(m[2]);
+                const valid = m && mm >= 1 && mm <= 12 && dd >= 1 && dd <= new Date(2024, mm, 0).getDate();
+                if (!valid) { alert('Aniversário no formato DD/MM (ex.: 15/03).'); return; }
+                birthday = `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+            }
+            const value = {};
+            if (notes) value.notes = notes;
+            if (birthday) value.birthday = birthday;
+            try {
+                if (Object.keys(value).length) await clientNotesRef.child(phoneKey).set({ ...value, updatedAt: new Date().toISOString() });
+                else await clientNotesRef.child(phoneKey).remove();
+                document.activeElement && document.activeElement.blur && document.activeElement.blur();
+                showToast({ title: 'Ficha salva', body: 'Anotações e aniversário atualizados.', kind: 'ok' });
+                refreshCrmDetail();
+            } catch (e) { failSave(e); }
+        }
+
+        async function redeemReward(phoneKey) {
+            const client = crmAllClients.find(c => c.phoneKey === phoneKey);
+            if (!client || !loyaltyFor(client).available) { alert('Este cliente não tem brinde disponível.'); return; }
+            if (!confirm(`Registrar que ${client.name} usou 1 corte grátis hoje?`)) return;
+            try {
+                await loyaltyRef.child(`${phoneKey}/redeemed`).push({ date: localToday(), at: new Date().toISOString() });
+                showToast({ title: 'Brinde registrado', body: `${client.name} usou 1 corte grátis.`, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        async function undoReward(phoneKey, id) {
+            if (!confirm('Desfazer este brinde? Ele volta a ficar disponível para o cliente.')) return;
+            try { await loyaltyRef.child(`${phoneKey}/redeemed/${id}`).remove(); } catch (e) { failSave(e); }
+        }
+
+        function renderLoyaltySettings() {
+            const cfg = CheresAttendance.loyaltySettings(loyaltyCfg);
+            const input = document.getElementById('loyaltyEvery');
+            if (input && document.activeElement !== input) input.value = cfg.every;
+            const since = document.getElementById('loyaltySince');
+            if (since) since.textContent = formatDateBR(cfg.since);
+        }
+
+        async function saveLoyaltySettings() {
+            const every = Number(document.getElementById('loyaltyEvery').value);
+            if (!Number.isInteger(every) || every < 1 || every > 50) { alert('Use um número inteiro de 1 a 50.'); return; }
+            const cfg = CheresAttendance.loyaltySettings(loyaltyCfg);
+            try {
+                await loyaltySettingsRef.set({ every, since: cfg.since });
+                showToast({ title: 'Fidelidade atualizada', body: `A cada ${every} cortes, 1 grátis.`, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        // Linha extra no cartão da tela Hoje: anotação do cliente, brinde disponível, aniversário no dia.
+        function cardExtrasHtml(pk, date) {
+            if (!pk) return '';
+            const note = clientNotes[pk] || {};
+            const client = crmAllClients.find(c => c.phoneKey === pk);
+            const parts = [];
+            if (client && loyaltyFor(client).available) parts.push('<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 mt-1 mr-1"><i class="fa-solid fa-gift mr-1"></i>Brinde disponível</span>');
+            if (note.birthday && date && date.slice(5) === note.birthday) parts.push('<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-pink-900/50 text-pink-300 mt-1 mr-1"><i class="fa-solid fa-cake-candles mr-1"></i>Aniversário hoje</span>');
+            if (note.notes) parts.push(`<p class="text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1 mt-1.5"><i class="fa-solid fa-note-sticky mr-1"></i>${escapeHtml(note.notes)}</p>`);
+            return parts.join('');
+        }
+
+        // ============ ANIVERSARIANTES DA SEMANA ============
+        function renderBirthdays() {
+            const list = document.getElementById('birthdayList');
+            if (!list) return;
+            const today = localToday();
+            const days = Array.from({ length: 7 }, (_, i) => addDaysISO(today, i));
+            const people = [];
+            Object.entries(clientNotes).forEach(([pk, n]) => {
+                if (!n || !n.birthday) return;
+                const idx = days.findIndex(d => d.slice(5) === n.birthday);
+                if (idx === -1) return;
+                const c = crmAllClients.find(x => x.phoneKey === pk);
+                people.push({ pk, name: c ? c.name : formatPhone(pk), date: days[idx], idx });
+            });
+            people.sort((a, b) => a.idx - b.idx);
+            list.innerHTML = people.length ? '' : '<p class="text-zinc-500 text-sm">Nenhum aniversariante nos próximos 7 dias. Cadastre o aniversário na ficha do cliente (CRM).</p>';
+            people.forEach(pr => {
+                const first = firstNameOf(pr.name);
+                const msg = `Parabéns${first ? ', ' + first : ''}! Feliz aniversário. Um abraço do ${BARBER_NAME}, da Barbearia Cheres.`;
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 bg-zinc-800 rounded-2xl px-3 sm:px-4 py-3';
+                row.innerHTML = `<p class="w-16 shrink-0 text-center text-sm font-bold ${pr.idx === 0 ? 'text-pink-300' : 'text-amber-400'}">${pr.idx === 0 ? 'Hoje' : escapeHtml(dayLabel(pr.date))}</p>
+                    <p class="min-w-0 flex-1 font-semibold truncate">${escapeHtml(pr.name)}</p>`;
+                const a = document.createElement('a');
+                a.href = waLink(pr.pk, msg);
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.className = 'shrink-0 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-xl text-sm font-semibold transition';
+                a.innerHTML = '<i class="fa-brands fa-whatsapp mr-1"></i>Parabéns';
+                a.setAttribute('aria-label', `Mandar parabéns para ${pr.name} no WhatsApp`);
+                row.appendChild(a);
+                list.appendChild(row);
+            });
+        }
+
+        // ============ LISTA DE ESPERA (painel) ============
+        function renderWaitlistAdmin(date) {
+            const box = document.getElementById('waitlistAdminBox');
+            if (!box) return;
+            const entries = date ? Object.entries(waitlist[date] || {}) : [];
+            box.classList.toggle('hidden', !entries.length);
+            if (!entries.length) return;
+            document.getElementById('waitlistAdminCount').textContent = entries.length;
+            const list = document.getElementById('waitlistAdminList');
+            list.innerHTML = '';
+            entries.sort((a, b) => String(a[1].createdAt).localeCompare(String(b[1].createdAt))).forEach(([pk, e]) => {
+                const first = firstNameOf(e.name);
+                const msg = `Oi${first ? ', ' + first : ''}! Abriu um horário no dia ${formatDateBR(date)} na Barbearia Cheres. Se ainda quiser, é só agendar pelo site: ${window.location.origin}/ — ${BARBER_NAME}`;
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 bg-zinc-800 rounded-2xl px-3 sm:px-4 py-3';
+                row.innerHTML = `<div class="min-w-0 flex-1"><p class="font-semibold truncate">${escapeHtml(e.name || formatPhone(pk))}</p>
+                    <p class="text-xs ${e.notifiedAt ? 'text-emerald-400' : 'text-zinc-400'}">${e.notifiedAt ? '<i class="fa-solid fa-check mr-1"></i>Avisado' : 'Entrou ' + escapeHtml(new Date(e.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}</p></div>`;
+                const a = document.createElement('a');
+                a.href = waLink(pk, msg);
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.className = `shrink-0 px-3 py-2 rounded-xl text-sm font-semibold transition ${e.notifiedAt ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200' : 'bg-green-600 hover:bg-green-500 text-white'}`;
+                a.innerHTML = `<i class="fa-brands fa-whatsapp mr-1"></i>${e.notifiedAt ? 'De novo' : 'Avisar'}`;
+                a.setAttribute('aria-label', `Avisar ${e.name || 'cliente'} pelo WhatsApp que abriu horário`);
+                a.addEventListener('click', () => {
+                    waitlistRef.child(`${date}/${pk}`).transaction(cur => (cur ? { ...cur, notifiedAt: new Date().toISOString() } : null), undefined, false)
+                        .catch(err => console.error('Lista de espera:', err));
+                });
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'shrink-0 text-zinc-400 hover:text-red-400 w-9 h-9';
+                del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                del.setAttribute('aria-label', `Tirar ${e.name || 'cliente'} da lista de espera`);
+                del.onclick = () => { if (confirm(`Tirar ${e.name || 'este cliente'} da lista de espera de ${formatDateBR(date)}?`)) waitlistRef.child(`${date}/${pk}`).remove().catch(failSave); };
+                row.appendChild(a);
+                row.appendChild(del);
+                list.appendChild(row);
+            });
+        }
+
+        // Listas de espera de dias que já passaram não servem mais (dado temporário).
+        let waitlistCleaning = false;
+        function cleanupPastWaitlist() {
+            if (waitlistCleaning) return;
+            const today = localToday();
+            const old = Object.keys(waitlist).filter(d => d < today);
+            if (!old.length) return;
+            waitlistCleaning = true;
+            waitlistRef.update(Object.fromEntries(old.map(d => [d, null])))
+                .catch(err => console.error('Limpeza da lista de espera:', err))
+                .finally(() => { waitlistCleaning = false; });
+        }
+
+        // ============ EXPORTAR PLANILHA (CSV) ============
+        function downloadCsv(name, header, rows) {
+            const blob = new Blob([CheresReports.toCsv(header, rows)], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name}-${localToday()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        function exportClientsCsv() {
+            const header = ['Nome', 'Telefone', 'E-mail', 'Origem', 'Visitas (atendido)', 'Faltas', 'Total gasto (R$)', 'Última visita', 'Próximo horário', 'Aniversário', 'Cortes p/ fidelidade', 'Brindes disponíveis', 'Anotações'];
+            const rows = crmAllClients.map(c => {
+                const note = clientNotes[c.phoneKey] || {};
+                const loyal = loyaltyFor(c);
+                return [c.name, c.phone, c.email || '', getClientOrigin(c).label, c.visits, c.noShows, CheresReports.csvNumber(c.totalSpent),
+                    c.lastVisit ? formatDateBR(c.lastVisit) : '', c.nextAppointment ? `${formatDateBR(c.nextAppointment)} ${c.nextTime}` : '',
+                    birthdayText(note.birthday), `${loyal.progress} de ${loyal.every}`, loyal.available, note.notes || ''];
+            });
+            downloadCsv('clientes-cheres', header, rows);
+        }
+
+        function exportAppointmentsCsv() {
+            const label = { attended: 'Atendido', noshow: 'Faltou', pending: 'Pendente', upcoming: 'Agendado', cancelled: 'Cancelado' };
+            const rows = [];
+            const add = (list, node) => list.forEach(a => {
+                if (!a || !a.date) return;
+                const out = node === 'cancelled' ? 'cancelled' : CheresAttendance.outcome(a, isTimePast, node === 'appointmentHistory');
+                rows.push({ sort: a.date + (a.time || ''), cells: [
+                    formatDateBR(a.date), a.time || '', a.name || '', a.phone || '', a.service || '', label[out],
+                    out === 'attended' ? (CheresAttendance.methodLabel(a) || 'Não informado') : '',
+                    out === 'attended' ? CheresReports.csvNumber(CheresAttendance.paidValue(a, servicePrices, out)) : '',
+                    CheresReports.csvNumber(CheresAttendance.listPrice(a, servicePrices)),
+                    a.rescheduledFrom || '', node === 'cancelled' ? (a.cancelledBy === 'barber' ? 'Barbeiro' : 'Cliente') : ''
+                ] });
+            });
+            add(appointments, 'appointments');
+            add(appointmentHistory, 'appointmentHistory');
+            add(cancelledList, 'cancelled');
+            rows.sort((x, y) => y.sort.localeCompare(x.sort));
+            downloadCsv('atendimentos-cheres', ['Data', 'Hora', 'Cliente', 'Telefone', 'Serviço', 'Situação', 'Forma de pagamento', 'Valor pago (R$)', 'Preço de tabela (R$)', 'Remarcado de', 'Cancelado por'], rows.map(r => r.cells));
+        }
 
         // ============ LOGIN DO BARBEIRO ============
         function showDashboard() {
