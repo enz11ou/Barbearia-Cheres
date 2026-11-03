@@ -4,11 +4,15 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
 
 ## Estrutura
 - `barbearia-cheres-main/index.html`: site público (agendar, conta do cliente, remarcar, cancelar).
-- `barbearia-cheres-main/admin.html`: painel do barbeiro (agenda, horários, CRM, gráficos, bloqueios, administradores).
+- `barbearia-cheres-main/admin.html`: painel do barbeiro (Hoje, agenda, horários, CRM, gráficos, bloqueios, administradores).
+- `barbearia-cheres-main/attendance.js`: **regra única de atendido/faltou/pendente e valor pago** (`window.CheresAttendance`),
+  usada pelo painel (CRM, tela Hoje) e pelo perfil do cliente.
+- `barbearia-cheres-main/manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png`: "Adicionar à tela inicial" do painel
+  (abre em `/admin`). `sw.js`: service worker mínimo só para notificações no Android (sem `fetch`, sem cache offline).
 - `barbearia-cheres-main/schedule.js`: **regra única dos horários** (`window.CheresSchedule`), carregada pelas duas páginas.
   Nunca escrever listas de horários fixas no HTML: usar `CheresSchedule.forDate(date, settings, exceptions)`.
 - `database.rules.json`: regras do Realtime Database (fonte única das regras).
-- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`: testes do `schedule.js`.
+- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs` e `tests/attendance.test.mjs`: testes das regras de horário e de atendimento.
 - `backups/` (fora do Git): backups do banco antes de mexer em dados existentes.
 
 ## Deploy
@@ -32,6 +36,20 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
   - Mudança de horário nunca apaga agendamentos: o painel lista os que ficam de fora e pede confirmação.
   - As regras não sabem se um horário está aberto (isso depende do `schedule.js`); `bookedSlots` aceita
     qualquer HH:00/HH:30 de 00 a 23h, e o site confere a grade antes de reservar.
+
+- Atendimento (Fase 2), campos gravados só pelo barbeiro no próprio agendamento e levados para o histórico:
+  - `attendance` (`attended` | `noshow`), `payment` (`{ method: pix|cash|card, amount }`), `price` (preço da época),
+    `attendanceAt`, `remindedFor` (`"AAAA-MM-DD HH:MM"`: lembrete vale só para esse horário), `rescheduledBy: 'barber'`.
+  - A limpeza diária (`cleanupPastAppointments`) move o dia encerrado para `appointmentHistory` com `status: 'pending'`
+    (ou o `attendance` já marcado). Nada vira concluído sozinho.
+  - Histórico antigo com `status: 'completed'` (antes de 03/11/2026) conta como atendido pelo preço da tabela.
+  - Visitas e total gasto contam só atendidos (valor pago). Para "tempo sem vir", pendente também conta.
+  - O cliente vê falta como "Não compareceu" e pendente como "Concluído".
+  - Avisos de agendar/remarcar/cancelar: comparam leituras do banco; o que o próprio painel faz não gera aviso.
+  - Gravações em registro que pode sumir (marcação, lembrete, remarcar, mudança para o histórico) usam transação
+    "só se existir". Na transação, devolver `null` (não `undefined`) quando vier vazio: vazio pode ser só falta de
+    cache, e `undefined` aborta sem consultar o servidor.
+  - As regras recusam `appointments/$id` sem `date` e `time`, mesmo do admin (um registro órfão travava o painel).
 
 ## Regras de segurança (não quebrar)
 - Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.

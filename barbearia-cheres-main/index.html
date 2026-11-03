@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="schedule.js"></script>
+    <script src="attendance.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -1112,15 +1113,20 @@
         function renderProfile() {
             if (!currentClient || !document.getElementById('profName')) return;
             const $ = id => document.getElementById(id);
-            const price = a => servicePrices[a.service] || 0;
+            const price = a => CheresAttendance.listPrice(a, servicePrices);
 
             const upcoming = myAppointments.filter(a => !isTimePast(a.date, a.time))
                 .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-            const doneToday = myAppointments.filter(a => isTimePast(a.date, a.time)).map(a => ({ ...a, status: 'completed' }));
-            const doneOld = myHistory.map(a => ({ ...a, status: 'completed' }));
+            // Para o cliente, "pendente" (o barbeiro ainda não marcou) aparece como concluído; falta aparece como "Não compareceu".
+            const outcomeOf = (a, inHistory) => CheresAttendance.outcome(a, isTimePast, inHistory);
+            const past = [
+                ...myAppointments.filter(a => isTimePast(a.date, a.time)).map(a => ({ ...a, outcome: outcomeOf(a, false) })),
+                ...myHistory.map(a => ({ ...a, outcome: outcomeOf(a, true) }))
+            ].map(a => ({ ...a, status: a.outcome === 'noshow' ? 'noshow' : 'completed' }));
+            const completed = past.filter(a => a.status === 'completed');
             const cancelled = myCancelled.map(a => ({ ...a, status: 'cancelled' }));
-            const completed = [...doneToday, ...doneOld];
-            const history = [...completed, ...cancelled].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+            const history = [...past, ...cancelled].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+            const spent = a => (a.outcome === 'attended' ? CheresAttendance.paidValue(a, servicePrices, 'attended') : price(a));
 
             $('profAvatar').textContent = currentClient.name.trim().charAt(0).toUpperCase();
             $('profName').textContent = currentClient.name;
@@ -1132,7 +1138,7 @@
 
             $('profStatVisits').textContent = completed.length;
             $('profStatNext').textContent = upcoming.length ? `${upcoming[0].date.split('-').reverse().slice(0, 2).join('/')} às ${upcoming[0].time}` : '—';
-            $('profStatSpent').textContent = formatMoney(completed.reduce((s, a) => s + price(a), 0));
+            $('profStatSpent').textContent = formatMoney(completed.reduce((s, a) => s + spent(a), 0));
 
             $('profUpcoming').innerHTML = upcoming.length ? upcoming.map(a => `
                 <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 flex flex-col gap-3">
@@ -1153,12 +1159,14 @@
                 const isDone = a.status === 'completed';
                 const badge = isDone
                     ? '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700">Concluído</span>'
-                    : '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-900/50 text-red-300 border border-red-800">Cancelado</span>';
+                    : a.status === 'noshow'
+                        ? '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-600">Não compareceu</span>'
+                        : '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-900/50 text-red-300 border border-red-800">Cancelado</span>';
                 return `
                 <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="font-semibold ${isDone ? '' : 'text-zinc-400 line-through'}">${escapeHtml(a.service)}</p>
-                        <p class="text-sm text-zinc-400">${formatBR(a.date)} às ${escapeHtml(a.time)}${isDone ? ' • ' + formatMoney(price(a)) : ''}</p>
+                        <p class="text-sm text-zinc-400">${formatBR(a.date)} às ${escapeHtml(a.time)}${isDone ? ' • ' + formatMoney(spent(a)) : ''}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         ${badge}
@@ -1229,7 +1237,8 @@
                     await appointmentsRef.child(a.key).update({
                         date, time,
                         rescheduledFrom: `${a.date} ${a.time}`,
-                        rescheduledAt: new Date().toISOString()
+                        rescheduledAt: new Date().toISOString(),
+                        rescheduledBy: null   // a última remarcação foi do cliente
                     });
                 } catch (e) {
                     newRef.remove();

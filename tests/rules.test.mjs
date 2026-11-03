@@ -301,3 +301,75 @@ describe('horário de funcionamento (fase 1)', () => {
         if (won !== 1) throw new Error(`esperado 1 vencedor, houve ${won}`);
     });
 });
+
+describe('rotina do dia (fase 2)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    const marcado = {
+        remindedFor: '2026-10-21 10:00', rescheduledBy: 'barber',
+        attendance: 'attended', payment: { method: 'pix', amount: 30 }, price: 35, attendanceAt: '2026-10-21T13:00:00Z'
+    };
+
+    test('barbeiro marca atendido/faltou, lembrete e remarcação no agendamento e no histórico', async () => {
+        await assertSucceeds(update(ref(andre(), 'appointments/a1'), marcado));
+        await assertSucceeds(update(ref(andre(), 'appointments/a1'), { attendance: null, payment: null, attendanceAt: null }));
+        await assertSucceeds(update(ref(andre(), 'appointmentHistory/h1'), { status: 'noshow', attendance: 'noshow', attendanceAt: 'x' }));
+        await assertSucceeds(update(ref(andre(), 'appointmentHistory/h1'), { status: 'attended', attendance: 'attended', payment: { method: 'cash', amount: 35 } }));
+    });
+    test('cliente não marca a própria presença, pagamento nem lembrete', async () => {
+        await assertFails(update(ref(alice(), 'appointments/a1'), { attendance: 'attended' }));
+        await assertFails(update(ref(alice(), 'appointments/a1'), { payment: { method: 'pix', amount: 0 } }));
+        await assertFails(update(ref(alice(), 'appointments/a1'), { remindedFor: 'x' }));
+        await assertFails(update(ref(alice(), 'appointmentHistory/h1'), { attendance: 'attended' }));
+    });
+    test('cliente continua remarcando um agendamento que já tem campos do barbeiro', async () => {
+        await env.withSecurityRulesDisabled(ctx => update(ref(ctx.database(), 'appointments/a1'), { remindedFor: '2026-10-21 10:00', rescheduledBy: 'barber', rescheduledFrom: '2026-10-20 09:00' }));
+        await assertSucceeds(set(ref(alice(), 'bookedSlots/2026-10-23_1400'), ALICE.uid));
+        await assertSucceeds(update(ref(alice(), 'appointments/a1'), { date: '2026-10-23', time: '14:00', rescheduledFrom: '2026-10-21 10:00', rescheduledAt: new Date().toISOString() }));
+        await assertSucceeds(remove(ref(alice(), 'bookedSlots/2026-10-21_1000')));
+    });
+    test('cliente continua cancelando um agendamento que já tem campos do barbeiro', async () => {
+        await env.withSecurityRulesDisabled(ctx => update(ref(ctx.database(), 'appointments/a1'), { remindedFor: '2026-10-21 10:00', rescheduledBy: 'barber' }));
+        await assertSucceeds(remove(ref(alice(), 'appointments/a1')));
+    });
+    test('cliente lê o próprio histórico com a marcação (para ver "Não compareceu")', async () => {
+        await env.withSecurityRulesDisabled(ctx => update(ref(ctx.database(), 'appointmentHistory/h1'), { attendance: 'noshow', status: 'noshow' }));
+        await assertSucceeds(get(query(ref(alice(), 'appointmentHistory'), orderByChild('phoneKey'), equalTo(ALICE.phone))));
+    });
+    test('barbeiro remarca: reserva atômica do novo horário com o dono certo', async () => {
+        const r = await runTransaction(ref(andre(), 'bookedSlots/2026-10-24_1500'), cur => (cur ? undefined : ALICE.uid));
+        if (!r.committed) throw new Error('reserva do barbeiro falhou');
+        const r2 = await runTransaction(ref(alice(), 'bookedSlots/2026-10-24_1500'), cur => (cur ? undefined : ALICE.uid));
+        if (r2.committed) throw new Error('horário ocupado não deveria ser reservado de novo');
+    });
+});
+
+describe('correções da revisão (fase 2)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+
+    test('nem o barbeiro cria agendamento sem data e hora (evita registro órfão que trava o painel)', async () => {
+        await assertFails(update(ref(andre(), 'appointments/sumiu'), { attendance: 'attended', payment: { method: 'pix', amount: 30 } }));
+        await assertFails(update(ref(andre(), 'appointments/sumiu'), { remindedFor: '2026-10-21 10:00' }));
+        await assertSucceeds(update(ref(andre(), 'appointments/a1'), { remindedFor: '2026-10-21 10:00' }));   // existente continua ok
+        await assertSucceeds(remove(ref(andre(), 'appointments/a1')));
+    });
+    test('cliente remarca e limpa o "remarcado pelo barbeiro"', async () => {
+        await env.withSecurityRulesDisabled(ctx => update(ref(ctx.database(), 'appointments/a1'), { rescheduledBy: 'barber' }));
+        await assertSucceeds(set(ref(alice(), 'bookedSlots/2026-10-23_1400'), ALICE.uid));
+        await assertSucceeds(update(ref(alice(), 'appointments/a1'), { date: '2026-10-23', time: '14:00', rescheduledFrom: '2026-10-21 10:00', rescheduledAt: 'x', rescheduledBy: null }));
+        await assertFails(update(ref(alice(), 'appointments/a1'), { rescheduledBy: 'barber' }));
+    });
+    test('mudança para o histórico com transação (como a limpeza diária faz)', async () => {
+        let captured = null;
+        const r = await runTransaction(ref(andre(), 'appointments/a1'), cur => { captured = cur; return null; });
+        if (!r.committed || !captured) throw new Error('não capturou o agendamento');
+        await assertSucceeds(runTransaction(ref(andre(), 'appointmentHistory/a1'), h => ({ ...captured, ...(h || {}), status: 'pending' })));
+        const gone = await get(ref(andre(), 'appointments/a1'));
+        if (gone.exists()) throw new Error('agendamento deveria ter saído de appointments');
+    });
+    test('transação "só se existir" não recria registro apagado', async () => {
+        const r = await runTransaction(ref(andre(), 'appointments/naoexiste'), cur => (cur ? { ...cur, remindedFor: 'x' } : null));
+        if (r.snapshot.exists()) throw new Error('não deveria criar registro');
+    });
+});
