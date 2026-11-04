@@ -24,6 +24,7 @@
     <script src="schedule.js"></script>
     <script src="attendance.js"></script>
     <script src="reports.js"></script>
+    <script src="services.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -198,6 +199,9 @@
                 </button>
                 <button onclick="switchDashboardTab('schedule')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-clock"></i> Horários
+                </button>
+                <button onclick="switchDashboardTab('services')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-tags"></i> Serviços
                 </button>
                 <button onclick="switchDashboardTab('analytics')" class="dashboard-tab whitespace-nowrap px-3 sm:px-4 py-2 font-semibold text-base sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-sack-dollar"></i> Financeiro
@@ -374,26 +378,6 @@
                             <i class="fa-solid fa-users text-4xl text-blue-400 opacity-30"></i>
                         </div>
                     </div>
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Plano 4 Cortes Ativos</p>
-                                <p id="crmPlan1" class="text-3xl font-bold text-amber-400">0</p>
-                                <p class="text-zinc-500 text-xs mt-1">R$ 110,00/mês</p>
-                            </div>
-                            <i class="fa-solid fa-scissors text-4xl text-amber-400 opacity-30"></i>
-                        </div>
-                    </div>
-                    <div class="stat-card p-6 rounded-2xl">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-zinc-400 text-sm mb-1">Plano Corte+Barba Ativos</p>
-                                <p id="crmPlan2" class="text-3xl font-bold text-emerald-400">0</p>
-                                <p class="text-zinc-500 text-xs mt-1">R$ 140,00/mês</p>
-                            </div>
-                            <i class="fa-solid fa-star text-4xl text-emerald-400 opacity-30"></i>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-8">
@@ -427,8 +411,6 @@
                             <option value="">Todos os clientes</option>
                             <option value="frequent">Clientes Frequentes (3+)</option>
                             <option value="new">Novos Clientes (1 visita)</option>
-                            <option value="plan1">Plano 4 Cortes</option>
-                            <option value="plan2">Plano Corte + Barba</option>
                             <option value="account">Com conta no site</option>
                             <option value="manual">Cadastrados por mim</option>
                             <option value="novisit">Sem visitas ainda</option>
@@ -538,6 +520,51 @@
             </div>
 
             <!-- TAB: SETTINGS -->
+            <!-- TAB: SERVIÇOS E PLANOS (settings/services e settings/plans) -->
+            <div id="tab-services" class="dashboard-content hidden">
+                <div class="space-y-6">
+                    <section class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800" aria-labelledby="svcTitle">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+                            <h3 id="svcTitle" class="text-xl font-bold text-amber-500"><i class="fa-solid fa-scissors mr-2"></i>Serviços e preços</h3>
+                            <span id="svcDirty" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">Alterações não salvas</span>
+                        </div>
+                        <ul class="text-zinc-400 text-sm mb-5 space-y-1 list-disc pl-5">
+                            <li>O que você salvar aparece na hora no site (lista de serviços e agendamento).</li>
+                            <li>Preço novo vale para os próximos atendimentos. O que já foi atendido continua com o valor da época.</li>
+                            <li>Para tirar um serviço do site, desmarque <strong class="text-zinc-200">"No site"</strong>. Assim, quem já agendou não é afetado.</li>
+                            <li>O nome de um serviço salvo não muda (os agendamentos guardam o nome). Para trocar o nome, crie um serviço novo e desmarque "No site" no antigo.</li>
+                            <li>Só serviços com <strong class="text-zinc-200">"Corte"</strong> no nome contam para a fidelidade.</li>
+                        </ul>
+                        <p id="svcRemote" class="hidden text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3" role="status">A lista foi alterada em outro aparelho. Toque em Desfazer para ver a versão atual antes de salvar.</p>
+                        <div id="svcList" class="space-y-6"></div>
+                        <div class="flex flex-col sm:flex-row gap-3 mt-5">
+                            <button type="button" onclick="addServiceRow()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-5 py-2.5 rounded-xl font-semibold transition"><i class="fa-solid fa-plus mr-2"></i>Novo serviço</button>
+                            <div class="flex gap-3 sm:ml-auto">
+                                <button type="button" id="svcDiscardBtn" onclick="discardServices()" class="hidden flex-1 sm:flex-none bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-5 py-2.5 rounded-xl font-semibold transition">Desfazer</button>
+                                <button type="button" onclick="saveServices()" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-black px-6 py-2.5 rounded-xl font-bold transition">Salvar serviços</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-800" aria-labelledby="planTitle">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+                            <h3 id="planTitle" class="text-xl font-bold text-amber-500"><i class="fa-solid fa-star mr-2"></i>Planos mensais</h3>
+                            <span id="planDirty" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">Alterações não salvas</span>
+                        </div>
+                        <p class="text-zinc-400 text-sm mb-5">Como os planos aparecem no site. Um item por linha (até 6). "Destaque" mostra o selo MAIS POPULAR.</p>
+                        <p id="planRemote" class="hidden text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3" role="status">Os planos foram alterados em outro aparelho. Toque em Desfazer para ver a versão atual antes de salvar.</p>
+                        <div id="planList" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                        <div class="flex flex-col sm:flex-row gap-3 mt-5">
+                            <button type="button" onclick="addPlanRow()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-5 py-2.5 rounded-xl font-semibold transition"><i class="fa-solid fa-plus mr-2"></i>Novo plano</button>
+                            <div class="flex gap-3 sm:ml-auto">
+                                <button type="button" id="planDiscardBtn" onclick="discardPlans()" class="hidden flex-1 sm:flex-none bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-5 py-2.5 rounded-xl font-semibold transition">Desfazer</button>
+                                <button type="button" onclick="savePlans()" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-black px-6 py-2.5 rounded-xl font-bold transition">Salvar planos</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
             <div id="tab-settings" class="dashboard-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 lg:col-span-2">
@@ -807,15 +834,11 @@
         let cancelledList = [];
         let finDailyChart, finServiceChart, finHourlyChart, finUpcomingChart;   // gráficos da aba Financeiro
 
-        const servicePrices = {
-            'Corte': 35, 'Sobrancelha': 10, 'Pigmentação': 15, 'Reflexo': 75,
-            'Nevou': 85, 'Barba': 20, 'Pé': 15, 'Corte e barba': 45,
-            'Corte barba e sobrancelha': 50, 'Corte + pigmentação': 45,
-            'Corte + reflexo': 75, 'Corte + nevou': 85
-        };
-
-        const plan2Services = ['Corte e barba', 'Corte barba e sobrancelha'];
-        const plan1Services = ['Corte', 'Corte + pigmentação', 'Corte + reflexo', 'Corte + nevou'];
+        // Serviços e planos (settings/services e settings/plans). Sem nada salvo = lista padrão do services.js.
+        let services = CheresServices.normalizeServices(null);
+        let plans = CheresServices.normalizePlans(null);
+        // Preço de tabela de um registro (gravado > tabela antiga até 03/11/2026 > tabela atual).
+        const servicePrices = rec => CheresServices.priceOf(rec, services);
 
         // ============ AUXILIARES ============
         function slotKey(date, time) {
@@ -859,12 +882,14 @@
             const app = captured;
             await historyRef.child(key).transaction(h => {
                 const prev = h || {};
-                return {
-                    ...app, ...prev, key,
+                const rec = { ...app, ...prev, key,
                     phoneKey: normalizePhone(app.phone || '') || app.phoneKey || '',
                     status: prev.attendance || app.attendance || prev.status || 'pending',
                     completedDate: prev.completedDate || new Date().toISOString()
                 };
+                // Congela o preço de tabela do dia (pendente e falta não mudam se o preço for editado depois).
+                if (typeof rec.price !== 'number') rec.price = CheresServices.priceOf(rec, services);
+                return rec;
             }, undefined, false);
             if (app.date && app.time) await bookedSlotsRef.child(slotKey(app.date, app.time)).remove().catch(() => {});
         }
@@ -980,6 +1005,18 @@
             clientNotesRef.on('value', snap => { clientNotes = snap.val() || {}; refreshCrmDetail(); renderToday(); }, sessionLost);
             expensesRef.on('value', snap => { expenses = snap.val() || {}; renderFinance(); }, sessionLost);
             loyaltyRef.on('value', snap => { loyaltyData = snap.val() || {}; refreshCrmDetail(); renderToday(); }, sessionLost);
+            db.ref('settings/services').on('value', snap => {
+                services = CheresServices.normalizeServices(snap.val());
+                if (!svcDirty) { svcDraft = null; renderServicesEditor(); }
+                else if (!svcSaving) document.getElementById('svcRemote').classList.remove('hidden');
+                renderServiceSelect();
+                refreshPrices();
+            }, sessionLost);
+            db.ref('settings/plans').on('value', snap => {
+                plans = CheresServices.normalizePlans(snap.val());
+                if (!planDirty) { planDraft = null; renderPlansEditor(); }
+                else if (!planSaving) document.getElementById('planRemote').classList.remove('hidden');
+            }, sessionLost);
             loyaltySettingsRef.on('value', snap => { loyaltyCfg = snap.val(); renderLoyaltySettings(); refreshCrmDetail(); renderToday(); }, sessionLost);
             waitlistRef.on('value', snap => { waitlist = snap.val() || {}; renderToday(); cleanupPastWaitlist(); }, sessionLost);
 
@@ -1122,15 +1159,6 @@
             return { label: 'Regular', color: 'text-green-400', bg: 'bg-green-400/20' };
         }
 
-        function getClientPlan(client) {
-            const serviceNames = Object.keys(client.services);
-            const hasPlan2 = serviceNames.some(s => plan2Services.includes(s));
-            const hasPlan1 = serviceNames.some(s => plan1Services.includes(s));
-            if (hasPlan2) return { label: 'Plano Corte+Barba', color: 'text-emerald-400', bg: 'bg-emerald-400/20' };
-            if (hasPlan1) return { label: 'Plano 4 Cortes', color: 'text-amber-400', bg: 'bg-amber-400/20' };
-            return null;
-        }
-
         function getClientOrigin(client) {
             if (client.hasAccount) return { label: 'Conta no site', color: 'text-emerald-300', bg: 'bg-emerald-400/15' };
             if (client.manual) return { label: 'Cadastro manual', color: 'text-blue-300', bg: 'bg-blue-400/15' };
@@ -1229,17 +1257,7 @@
 
         function updateCRMTable() {
             crmAllClients = buildClientData();
-            let plan1Count = 0, plan2Count = 0;
-            crmAllClients.forEach(client => {
-                if (client.nextAppointment) {
-                    const plan = getClientPlan(client);
-                    if (plan && plan.label === 'Plano Corte+Barba') plan2Count++;
-                    else if (plan && plan.label === 'Plano 4 Cortes') plan1Count++;
-                }
-            });
             document.getElementById('crmTotalClients').textContent = crmAllClients.length;
-            document.getElementById('crmPlan1').textContent = plan1Count;
-            document.getElementById('crmPlan2').textContent = plan2Count;
             filterCRM();
             refreshNameList();
             renderRecencySummary();
@@ -1261,8 +1279,6 @@
                 if (filter === 'account') matchFilter = c.hasAccount;
                 if (filter === 'manual') matchFilter = c.manual && !c.hasAccount;
                 if (RECENCY_ORDER.includes(filter)) { const k = getRecencyTag(c).key; matchFilter = k === filter || (filter === 'never' && k === 'first'); }
-                if (filter === 'plan1') { const p = getClientPlan(c); matchFilter = !!p && p.label === 'Plano 4 Cortes'; }
-                if (filter === 'plan2') { const p = getClientPlan(c); matchFilter = !!p && p.label === 'Plano Corte+Barba'; }
                 return matchSearch && matchFilter;
             });
             document.getElementById('crmClientCount').textContent = `${clients.length} cliente(s) encontrado(s)`;
@@ -1277,7 +1293,6 @@
             }
             tbody.innerHTML = clients.map(client => {
                 const profile = getClientProfile(client);
-                const plan = getClientPlan(client);
                 const origin = getClientOrigin(client);
                 const tag = getRecencyTag(client);
                 const topService = Object.entries(client.services).sort((a, b) => b[1] - a[1])[0];
@@ -1288,7 +1303,6 @@
                         <div class="flex flex-wrap gap-1 mt-1">
                             <span class="text-xs ${origin.color} ${origin.bg} px-2 py-0.5 rounded-full">${origin.label}</span>
                             <span class="text-xs ${tag.color} ${tag.bg} px-2 py-0.5 rounded-full">${tag.label}</span>
-                            ${plan ? `<span class="text-xs ${plan.color} ${plan.bg} px-2 py-0.5 rounded-full">${plan.label}</span>` : ''}
                         </div>
                         ${client.email ? `<div class="text-xs text-zinc-500 mt-1">${escapeHtml(client.email)}</div>` : ''}
                     </td>
@@ -1439,9 +1453,7 @@
         }
 
         function initNewAppointmentForm() {
-            const sel = document.getElementById('naService');
-            sel.innerHTML = '<option value="">Serviço</option>' + Object.keys(servicePrices)
-                .map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)} — ${money(servicePrices[s])}</option>`).join('');
+            renderServiceSelect();
             const date = document.getElementById('naDate');
             date.min = localToday();
             date.value = localToday();
@@ -1595,7 +1607,7 @@
                 return;
             }
             sorted.forEach(app => {
-                const price = servicePrices[app.service] || 0;
+                const price = CheresAttendance.listPrice(app, servicePrices);
                 const isPast = app.date < today;
                 const statusClass = isPast ? 'status-cancelled' : 'status-active';
                 const statusText = isPast ? 'Passado' : 'Ativo';
@@ -3091,6 +3103,265 @@
                 showToast({ title: 'Fidelidade atualizada', body: `A cada ${every} cortes, 1 grátis.`, kind: 'ok' });
             } catch (e) { failSave(e); }
         }
+
+        // ============ SERVIÇOS E PLANOS (editor) ============
+        // Edita um rascunho local; só grava no banco ao tocar em Salvar (a lista inteira de uma vez).
+        let svcDraft = null, planDraft = null, svcDirty = false, planDirty = false;
+        const cloneList = list => list.map(x => ({ ...x, perks: x.perks ? [...x.perks] : undefined }));
+        const fieldCls = 'bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500';
+        const iconBtn = 'w-11 h-11 shrink-0 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed transition';
+
+        // Preço mudou: recalcula o que mostra valores (Financeiro, CRM, tela Hoje).
+        function refreshPrices() {
+            financeCache = { a: null, h: null, entries: [] };
+            updateAllCharts();
+            updateCRMTable();
+            renderToday();
+        }
+
+        function renderServiceSelect() {
+            const sel = document.getElementById('naService');
+            if (!sel) return;
+            const chosen = sel.value, list = CheresServices.active(services);
+            sel.innerHTML = '<option value="">Serviço</option>' + list
+                .map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)} — ${money(s.price)}</option>`).join('');
+            if (list.some(s => s.name === chosen)) sel.value = chosen;
+        }
+
+        function setSvcDirty(v) {
+            svcDirty = v;
+            document.getElementById('svcDirty').classList.toggle('hidden', !v);
+            document.getElementById('svcDiscardBtn').classList.toggle('hidden', !v);
+        }
+        function setPlanDirty(v) {
+            planDirty = v;
+            document.getElementById('planDirty').classList.toggle('hidden', !v);
+            document.getElementById('planDiscardBtn').classList.toggle('hidden', !v);
+        }
+
+        // Mantém o rascunho agrupado por tipo (no site, individuais vêm antes dos combinados).
+        function sortDraftByCategory() {
+            svcDraft = [...svcDraft.filter(s => s.category !== 'combo'), ...svcDraft.filter(s => s.category === 'combo')];
+        }
+
+        // Redesenha e devolve o foco ao controle equivalente (teclado e leitor de tela não voltam ao topo).
+        function withFocus(render, focusId) {
+            render();
+            const el = focusId && document.getElementById(focusId);
+            if (el && !el.disabled) el.focus();
+        }
+
+        function serviceRowHtml(s, i, first, last) {
+            const label = escapeHtml(s.name || 'serviço novo');
+            return `
+                <div class="bg-zinc-950/60 border border-zinc-800 ${s.active ? '' : 'opacity-60'} rounded-xl p-3">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <label class="sr-only" for="svcName${i}">Nome do serviço</label>
+                        <input id="svcName${i}" data-i="${i}" data-f="name" value="${escapeHtml(s.name)}" maxlength="${CheresServices.NAME_MAX}" placeholder="Nome do serviço" ${s.isNew ? 'oninput="onSvcInput(this)"' : 'readonly title="Para trocar o nome, crie um serviço novo e desmarque No site neste"'} class="${fieldCls} flex-1 min-w-0 ${s.isNew ? '' : 'text-zinc-300 cursor-default'}">
+                        <div class="flex gap-2">
+                            <label class="sr-only" for="svcPrice${i}">Preço de ${label}</label>
+                            <div class="relative w-32 shrink-0">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm" aria-hidden="true">R$</span>
+                                <input id="svcPrice${i}" data-i="${i}" data-f="price" type="number" inputmode="decimal" min="0" max="${CheresServices.PRICE_MAX}" step="0.01" value="${Number.isFinite(s.price) ? s.price : ''}" oninput="onSvcInput(this)" class="${fieldCls} w-full pl-9">
+                            </div>
+                            <label class="sr-only" for="svcCat${i}">Tipo de ${label}</label>
+                            <select id="svcCat${i}" data-i="${i}" data-f="category" onchange="onSvcInput(this, true)" class="${fieldCls} flex-1 sm:w-36">
+                                <option value="individual" ${s.category === 'individual' ? 'selected' : ''}>Individual</option>
+                                <option value="combo" ${s.category === 'combo' ? 'selected' : ''}>Combinado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                        <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none min-h-[44px]">
+                            <input type="checkbox" id="svcActive${i}" data-i="${i}" data-f="active" ${s.active ? 'checked' : ''} onchange="onSvcInput(this, true)" aria-label="Mostrar ${label} no site" class="w-5 h-5 accent-amber-500"> No site
+                        </label>
+                        <span id="svcCut${i}" class="${CheresAttendance.isCut(s.name) ? '' : 'hidden'} text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-300"><i class="fa-solid fa-gift mr-1" aria-hidden="true"></i>Fidelidade</span>
+                        <span class="flex-1"></span>
+                        <button type="button" id="svcUp${i}" onclick="moveServiceRow(${i}, -1)" ${first ? 'disabled' : ''} class="${iconBtn}" aria-label="Subir ${label}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+                        <button type="button" id="svcDown${i}" onclick="moveServiceRow(${i}, 1)" ${last ? 'disabled' : ''} class="${iconBtn}" aria-label="Descer ${label}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
+                        ${s.isNew ? `<button type="button" onclick="removeServiceRow(${i})" class="${iconBtn} hover:text-red-400" aria-label="Remover ${label}"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        function renderServicesEditor() {
+            const box = document.getElementById('svcList');
+            if (!box) return;
+            if (!svcDraft) {
+                svcDraft = cloneList(services);
+                setSvcDirty(false);
+                document.getElementById('svcRemote').classList.add('hidden');
+            }
+            sortDraftByCategory();
+            const groups = [['individual', 'Individuais'], ['combo', 'Combinados']].map(([cat, title]) => {
+                const idx = svcDraft.map((s, i) => i).filter(i => (svcDraft[i].category === 'combo') === (cat === 'combo'));
+                if (!idx.length) return '';
+                return `<div><h4 class="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-2">${title}</h4>
+                    <div class="space-y-3">${idx.map((i, k) => serviceRowHtml(svcDraft[i], i, k === 0, k === idx.length - 1)).join('')}</div></div>`;
+            });
+            box.innerHTML = groups.join('');
+        }
+
+        function onSvcInput(el, rerender) {
+            const i = Number(el.dataset.i), s = svcDraft[i], f = el.dataset.f;
+            if (f === 'price') s.price = el.value === '' ? NaN : Number(el.value);
+            else if (f === 'active') s.active = el.checked;
+            else s[f] = el.value;
+            if (f === 'name') document.getElementById('svcCut' + i).classList.toggle('hidden', !CheresAttendance.isCut(s.name));
+            setSvcDirty(true);
+            if (!rerender) return;
+            // Depois de trocar o tipo a linha muda de bloco: segue o mesmo item até a posição nova.
+            renderServicesEditor();
+            document.getElementById((f === 'category' ? 'svcCat' : 'svcActive') + svcDraft.indexOf(s)).focus();
+        }
+
+        // Sobe/desce dentro do mesmo tipo.
+        function moveServiceRow(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= svcDraft.length || svcDraft[j].category !== svcDraft[i].category) return;
+            [svcDraft[i], svcDraft[j]] = [svcDraft[j], svcDraft[i]];
+            setSvcDirty(true);
+            const same = (dir < 0 ? 'svcUp' : 'svcDown') + j, other = (dir < 0 ? 'svcDown' : 'svcUp') + j;
+            withFocus(renderServicesEditor, document.getElementById(same) ? same : other);
+            const el = document.getElementById(same);
+            if (el && el.disabled) document.getElementById(other).focus();
+        }
+
+        function addServiceRow() {
+            if (!svcDraft) svcDraft = cloneList(services);
+            const id = CheresServices.newId('servico', svcDraft.map(s => s.id));
+            const row = { id, name: '', price: NaN, category: 'individual', active: true, isNew: true };
+            svcDraft.push(row);
+            setSvcDirty(true);
+            renderServicesEditor();   // reagrupa: o novo fica no fim dos individuais
+            document.getElementById('svcName' + svcDraft.indexOf(row)).focus();
+        }
+
+        function removeServiceRow(i) {
+            svcDraft.splice(i, 1);
+            setSvcDirty(true);
+            renderServicesEditor();
+        }
+
+        function discardServices() { svcDraft = null; renderServicesEditor(); }
+        let svcSaving = false, planSaving = false;
+
+        // Agendamentos futuros com esses serviços (só para avisar: eles continuam valendo).
+        function upcomingOf(names) {
+            const today = localToday();
+            return appointments.filter(a => a.date >= today && names.includes(a.service)).length;
+        }
+
+        async function saveServices() {
+            if (!svcDraft || !svcDirty) { showToast({ title: 'Nada para salvar', body: 'Os serviços já estão como no site.', kind: 'ok' }); return; }
+            const err = CheresServices.validateServices(svcDraft);
+            if (err) { alert(err); return; }
+            const draftNames = new Set(svcDraft.filter(s => s.active).map(s => s.name.replace(/\s+/g, ' ').trim()));
+            const leaving = CheresServices.active(services).map(s => s.name).filter(n => !draftNames.has(n));
+            const n = leaving.length ? upcomingOf(leaving) : 0;
+            if (n && !confirm(`${n} agendamento(s) futuro(s) usam serviço que vai sair do site ou mudar de nome (${leaving.join(', ')}).\n\nEles continuam marcados normalmente, com o nome antigo. Salvar mesmo assim?`)) return;
+            svcSaving = true;
+            try {
+                await db.ref('settings/services').set(CheresServices.toServicesData(svcDraft));
+                setSvcDirty(false);
+                svcDraft = null;
+                renderServicesEditor();
+                showToast({ title: 'Serviços salvos', body: 'O site já mostra a lista nova.', kind: 'ok' });
+            } catch (e) { failSave(e); } finally { svcSaving = false; }
+        }
+
+        function renderPlansEditor() {
+            const box = document.getElementById('planList');
+            if (!box) return;
+            if (!planDraft) {
+                planDraft = cloneList(plans);
+                setPlanDirty(false);
+                document.getElementById('planRemote').classList.add('hidden');
+            }
+            const last = planDraft.length - 1;
+            box.innerHTML = planDraft.length ? planDraft.map((p, i) => `
+                <div class="bg-zinc-950/60 border ${p.featured ? 'border-amber-500/60' : 'border-zinc-800'} ${p.active ? '' : 'opacity-60'} rounded-xl p-4 space-y-3">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <div class="flex-1 min-w-0">
+                            <label for="planName${i}" class="block text-xs text-zinc-400 mb-1">Nome</label>
+                            <input id="planName${i}" data-i="${i}" data-f="name" value="${escapeHtml(p.name)}" maxlength="${CheresServices.NAME_MAX}" oninput="onPlanInput(this)" class="${fieldCls} w-full">
+                        </div>
+                        <div class="sm:w-32 shrink-0">
+                            <label for="planPrice${i}" class="block text-xs text-zinc-400 mb-1">Preço por mês</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm" aria-hidden="true">R$</span>
+                                <input id="planPrice${i}" data-i="${i}" data-f="price" type="number" inputmode="decimal" min="0" max="${CheresServices.PRICE_MAX}" step="0.01" value="${Number.isFinite(p.price) ? p.price : ''}" oninput="onPlanInput(this)" class="${fieldCls} w-full pl-9">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="planPerks${i}" class="block text-xs text-zinc-400 mb-1">O que inclui (um por linha)</label>
+                        <textarea id="planPerks${i}" data-i="${i}" data-f="perks" rows="3" oninput="onPlanInput(this)" class="${fieldCls} w-full resize-y">${escapeHtml(p.perks.join('\n'))}</textarea>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none min-h-[44px]"><input type="checkbox" id="planActive${i}" data-i="${i}" data-f="active" ${p.active ? 'checked' : ''} onchange="onPlanInput(this, true)" aria-label="Mostrar ${escapeHtml(p.name || 'plano novo')} no site" class="w-5 h-5 accent-amber-500"> No site</label>
+                        <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none mr-auto min-h-[44px]"><input type="checkbox" id="planFeatured${i}" data-i="${i}" data-f="featured" ${p.featured ? 'checked' : ''} onchange="onPlanInput(this, true)" aria-label="Destacar ${escapeHtml(p.name || 'plano novo')} como mais popular" class="w-5 h-5 accent-amber-500"> Destaque</label>
+                        <button type="button" id="planUp${i}" onclick="movePlanRow(${i}, -1)" ${i === 0 ? 'disabled' : ''} class="${iconBtn}" aria-label="Subir ${escapeHtml(p.name)}"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" id="planDown${i}" onclick="movePlanRow(${i}, 1)" ${i === last ? 'disabled' : ''} class="${iconBtn}" aria-label="Descer ${escapeHtml(p.name)}"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" onclick="removePlanRow(${i})" class="${iconBtn} hover:text-red-400" aria-label="Remover ${escapeHtml(p.name) || 'plano novo'}"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>`).join('') : '<p class="text-zinc-400 text-sm lg:col-span-2">Nenhum plano na lista.</p>';
+        }
+
+        function onPlanInput(el, rerender) {
+            const p = planDraft[Number(el.dataset.i)], f = el.dataset.f;
+            if (f === 'price') p.price = el.value === '' ? NaN : Number(el.value);
+            else if (f === 'active' || f === 'featured') p[f] = el.checked;
+            else if (f === 'perks') p.perks = el.value.split('\n');
+            else p[f] = el.value;
+            setPlanDirty(true);
+            if (rerender) withFocus(renderPlansEditor, (f === 'featured' ? 'planFeatured' : 'planActive') + el.dataset.i);
+        }
+
+        function movePlanRow(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= planDraft.length) return;
+            [planDraft[i], planDraft[j]] = [planDraft[j], planDraft[i]];
+            setPlanDirty(true);
+            const same = (dir < 0 ? 'planUp' : 'planDown') + j, other = (dir < 0 ? 'planDown' : 'planUp') + j;
+            withFocus(renderPlansEditor, same);
+            if (document.getElementById(same).disabled) document.getElementById(other).focus();
+        }
+
+        function addPlanRow() {
+            if (!planDraft) planDraft = cloneList(plans);
+            const id = CheresServices.newId('plano', planDraft.map(p => p.id));
+            planDraft.push({ id, name: '', price: NaN, perks: [], featured: false, active: true });
+            setPlanDirty(true);
+            withFocus(renderPlansEditor, 'planName' + (planDraft.length - 1));
+        }
+
+        function removePlanRow(i) {
+            const p = planDraft[i];
+            if (p.name && !confirm(`Remover o plano "${p.name}"? Para só esconder do site, desmarque "No site".`)) return;
+            planDraft.splice(i, 1);
+            setPlanDirty(true);
+            renderPlansEditor();
+        }
+
+        function discardPlans() { planDraft = null; renderPlansEditor(); }
+
+        async function savePlans() {
+            if (!planDraft || !planDirty) { showToast({ title: 'Nada para salvar', body: 'Os planos já estão como no site.', kind: 'ok' }); return; }
+            if (!planDraft.length) { alert('Deixe pelo menos um plano na lista. Para não mostrar planos no site, desmarque "No site" em todos.'); return; }
+            const err = CheresServices.validatePlans(planDraft);
+            if (err) { alert(err); return; }
+            planSaving = true;
+            try {
+                await db.ref('settings/plans').set(CheresServices.toPlansData(planDraft));
+                setPlanDirty(false);
+                planDraft = null;
+                renderPlansEditor();
+                showToast({ title: 'Planos salvos', body: 'O site já mostra os planos novos.', kind: 'ok' });
+            } catch (e) { failSave(e); } finally { planSaving = false; }
+        }
+
+        window.addEventListener('beforeunload', e => { if (svcDirty || planDirty) { e.preventDefault(); e.returnValue = ''; } });
 
         // Linha extra no cartão da tela Hoje: anotação do cliente, brinde disponível, aniversário no dia.
         function cardExtrasHtml(pk, date) {

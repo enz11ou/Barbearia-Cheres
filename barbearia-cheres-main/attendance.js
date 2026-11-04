@@ -22,8 +22,10 @@
     }
 
     // Valor de tabela do serviço na época (o gravado no registro vale mais que a tabela atual).
+    // "prices" pode ser um mapa { serviço: preço } ou uma função rec -> preço (CheresServices.priceOf).
     function listPrice(rec, prices) {
         if (rec && typeof rec.price === 'number') return rec.price;
+        if (typeof prices === 'function') return prices(rec) || 0;
         return (prices && prices[rec && rec.service]) || 0;
     }
 

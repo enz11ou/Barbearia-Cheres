@@ -7,13 +7,15 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
 - `barbearia-cheres-main/admin.html`: painel do barbeiro (Hoje, agenda, horários, CRM, gráficos, bloqueios, administradores).
 - `barbearia-cheres-main/attendance.js`: **regra única de atendido/faltou/pendente e valor pago** (`window.CheresAttendance`),
   usada pelo painel (CRM, tela Hoje) e pelo perfil do cliente. Também tem a **fidelidade** (`loyaltyStatus`).
+- `barbearia-cheres-main/services.js`: **regra única de serviços, preços e planos** (`window.CheresServices`), carregada pelas
+  duas páginas. Nunca escrever listas de serviços/preços fixas no HTML: usar `normalizeServices`/`normalizePlans` e `priceOf`.
 - `barbearia-cheres-main/reports.js`: financeiro (faturamento, ticket médio, formas de pagamento) e CSV (`window.CheresReports`), só no painel.
 - `barbearia-cheres-main/manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png`: "Adicionar à tela inicial" do painel
   (abre em `/admin`). `sw.js`: service worker mínimo só para notificações no Android (sem `fetch`, sem cache offline).
 - `barbearia-cheres-main/schedule.js`: **regra única dos horários** (`window.CheresSchedule`), carregada pelas duas páginas.
   Nunca escrever listas de horários fixas no HTML: usar `CheresSchedule.forDate(date, settings, exceptions)`.
 - `database.rules.json`: regras do Realtime Database (fonte única das regras).
-- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`, `tests/attendance.test.mjs` e `tests/reports.test.mjs`: testes das funções puras.
+- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`, `tests/attendance.test.mjs`, `tests/reports.test.mjs` e `tests/services.test.mjs`: testes das funções puras.
 - `backups/` (fora do Git): backups do banco antes de mexer em dados existentes.
 
 ## Deploy
@@ -63,11 +65,23 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
     (serviço com "Corte" no nome) desde `since`. `loyalty/{telefone}/redeemed/{id}` = `{ date, at }`: admin grava, cliente lê o dele.
   - Lista de espera: `waitlist/{data}/{telefone}` = `{ name, uid, createdAt, notifiedAt? }`. O cliente (e-mail confirmado)
     entra/sai só da própria vaga; `notifiedAt` só admin. Dias passados são apagados pelo painel (dado temporário).
-  - Fica para a Fase 4B (depois da Fase 3): assinantes dos planos e receita dos planos.
+  - Fica para a Fase 4B: assinantes dos planos, cortes usados no mês, cobrança e receita dos planos.
+
+- Serviços e planos (Fase 3), aba "Serviços" do painel (público lê, só admin grava, formato validado nas regras):
+  - `settings/services/{id}` = `{ name, price, category: individual|combo, order, active }`.
+  - `settings/plans/{id}` = `{ name, price, perks: [até 6 textos], featured, order, active }`.
+  - Sem nada salvo valem as listas padrão do `services.js` (as de antes da Fase 3).
+  - O agendamento guarda só o **nome** do serviço. Por isso o nome de um serviço salvo é fixo no editor; para "renomear",
+    cria-se outro e desativa-se o antigo ("No site" desmarcado). Serviço nunca é excluído, só desativado.
+  - Preço de um registro (`CheresServices.priceOf`): `price` gravado > tabela antiga (registros até 03/11/2026) >
+    tabela atual pelo nome (inclui desativados) > tabela antiga > 0. O `price` é gravado ao marcar Atendido e quando
+    o dia fecha (`moveToHistory`); agendamento futuro segue o preço atual até o dia.
+  - O editor trabalha num rascunho e grava a lista inteira com `set`; se o banco mudar com rascunho aberto, avisa.
+  - Os contadores/filtros de plano antigos do CRM (estimativa pelo serviço) foram removidos até a Fase 4B.
 
 ## Regras de segurança (não quebrar)
 - Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.
-- `settings/$other` é recusado: ao criar um nó novo em `settings` (ex.: serviços), acrescentar a regra dele.
+- `settings/$other` é recusado: ao criar um nó novo em `settings`, acrescentar a regra dele (já existem `schedule`, `loyalty`, `services`, `plans`).
 - Cliente lê/escreve só os próprios dados, via query `orderByChild('phoneKey').equalTo(...)`.
 - Agendar/remarcar exige e-mail confirmado ou estar em `verifiedExempt`. Cancelar não exige.
 - Admin tem permissão **por nó**, não na raiz: no RTDB uma permissão dada na raiz não pode ser revogada abaixo,
