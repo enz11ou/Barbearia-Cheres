@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="schedule.js"></script>
     <script src="attendance.js"></script>
+    <script src="services.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -229,18 +230,6 @@
                             <label class="block text-sm font-medium mb-2">Serviço</label>
                             <select id="service" required class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-amber-500">
                                 <option value="">Selecione o serviço</option>
-                                <option value="Corte">Corte - R$ 35,00</option>
-                                <option value="Sobrancelha">Sobrancelha - R$ 10,00</option>
-                                <option value="Pigmentação">Pigmentação - R$ 15,00</option>
-                                <option value="Reflexo">Reflexo - R$ 75,00</option>
-                                <option value="Nevou">Nevou - R$ 85,00</option>
-                                <option value="Barba">Barba - R$ 20,00</option>
-                                <option value="Pé">Pé - R$ 15,00</option>
-                                <option value="Corte e barba">Corte e barba - R$ 45,00</option>
-                                <option value="Corte barba e sobrancelha">Corte + barba + sobrancelha - R$ 50,00</option>
-                                <option value="Corte + pigmentação">Corte + pigmentação - R$ 45,00</option>
-                                <option value="Corte + reflexo">Corte + reflexo - R$ 75,00</option>
-                                <option value="Corte + nevou">Corte + nevou - R$ 85,00</option>
                             </select>
                         </div>
                         <div>
@@ -275,7 +264,7 @@
         </div>
     </section>
 
-    <!-- SERVICES SECTION -->
+    <!-- SERVICES SECTION (montada pelo services.js a partir de settings/services) -->
     <section id="services-section" class="py-12 sm:py-16 bg-black hidden">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
             <button onclick="showHero()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 font-medium text-base">
@@ -283,65 +272,19 @@
             </button>
             <h2 class="logo-font text-5xl sm:text-6xl font-bold text-center mb-12 text-amber-500">NOSSOS SERVIÇOS</h2>
 
-            <div class="mb-16">
+            <div id="servicesIndividualBlock" class="mb-16">
                 <h3 class="text-2xl font-bold text-amber-500 mb-8 text-center">Serviços Individuais</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Corte</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 35,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Sobrancelha</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 10,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Barba</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 20,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Pigmentação</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 15,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Reflexo</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 75,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-2xl font-bold">Nevou</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 85,00</p>
-                    </div>
-                </div>
+                <div id="servicesIndividual" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
 
-            <div>
+            <div id="servicesComboBlock">
                 <h3 class="text-2xl font-bold text-amber-500 mb-8 text-center">Serviços Combinados</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-xl font-bold">Corte + Barba</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 45,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-xl font-bold">Corte + Barba + Sobrancelha</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 50,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-xl font-bold">Corte + Pigmentação</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 45,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-xl font-bold">Corte + Reflexo</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 75,00</p>
-                    </div>
-                    <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
-                        <h3 class="text-xl font-bold">Corte + Nevou</h3>
-                        <p class="text-5xl font-bold text-amber-500 mt-4">R$ 85,00</p>
-                    </div>
-                </div>
+                <div id="servicesCombo" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
         </div>
     </section>
 
-    <!-- PLANS SECTION -->
+    <!-- PLANS SECTION (montada a partir de settings/plans) -->
     <section id="plans-section" class="py-12 sm:py-16 bg-zinc-900 hidden">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
             <button onclick="showHero()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 font-medium text-base">
@@ -349,28 +292,8 @@
             </button>
             <h2 class="logo-font text-5xl sm:text-6xl font-bold text-center mb-12 text-amber-500">PLANOS MENSAIS</h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                <div class="bg-zinc-800 p-8 rounded-3xl border border-amber-600/20 hover:border-amber-500 transition text-center">
-                    <h3 class="text-2xl font-bold mb-4">Plano 4 Cortes</h3>
-                    <p class="text-5xl font-bold text-amber-500 mb-6">R$ 110,00</p>
-                    <ul class="space-y-3 text-zinc-300 mb-8">
-                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 4 cortes ao mês</li>
-                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Atendimento prioritário</li>
-                    </ul>
-                    <button onclick="showSection('client')" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold hover:bg-amber-400 transition">ASSINAR AGORA</button>
-                </div>
-
-                <div class="bg-zinc-800 p-8 rounded-3xl border-2 border-amber-500 transform scale-105 text-center">
-                    <div class="bg-amber-500 text-black px-4 py-2 rounded-full inline-block mb-4 font-bold text-sm">MAIS POPULAR</div>
-                    <h3 class="text-2xl font-bold mb-4">Plano 4 Cortes e Barba</h3>
-                    <p class="text-5xl font-bold text-amber-500 mb-6">R$ 140,00</p>
-                    <ul class="space-y-3 text-zinc-300 mb-8">
-                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 4 cortes e barba ao mês</li>
-                        <li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Atendimento VIP</li>
-                    </ul>
-                    <button onclick="showSection('client')" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold hover:bg-amber-400 transition">ASSINAR AGORA</button>
-                </div>
-            </div>
+            <div id="plansGrid" class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto"></div>
+            <p id="plansEmpty" class="hidden text-center text-zinc-400">Nenhum plano disponível no momento. Fale com o André pelo WhatsApp.</p>
         </div>
     </section>
 
@@ -548,12 +471,11 @@
         let blockedDates = [];
         let blockedTimeSlots = [];
 
-        const servicePrices = {
-            'Corte': 35, 'Sobrancelha': 10, 'Pigmentação': 15, 'Reflexo': 75,
-            'Nevou': 85, 'Barba': 20, 'Pé': 15, 'Corte e barba': 45,
-            'Corte barba e sobrancelha': 50, 'Corte + pigmentação': 45,
-            'Corte + reflexo': 75, 'Corte + nevou': 85
-        };
+        // Serviços e planos (settings/services e settings/plans). Começa com a lista padrão para não piscar vazio.
+        let services = CheresServices.normalizeServices(null);
+        let plans = CheresServices.normalizePlans(null);
+        // Preço de tabela de um registro (gravado > tabela antiga até 03/11/2026 > tabela atual).
+        const servicePrices = rec => CheresServices.priceOf(rec, services);
 
         // ============ HORÁRIOS OCUPADOS (PÚBLICO, SEM DADOS PESSOAIS) ============
         function slotKey(date, time) {
@@ -574,6 +496,49 @@
         }
 
         loyaltySettingsRef.on('value', snap => { loyaltyCfg = snap.val(); renderProfile(); }, () => {});
+
+        // ============ SERVIÇOS E PLANOS ============
+        function serviceCard(s) {
+            return `<div class="bg-zinc-900 p-8 rounded-3xl text-center border border-amber-600/20 hover:border-amber-500 transition">
+                <h3 class="${s.category === 'combo' ? 'text-xl' : 'text-2xl'} font-bold">${escapeHtml(s.name)}</h3>
+                <p class="text-5xl font-bold text-amber-500 mt-4">${formatMoney(s.price)}</p>
+            </div>`;
+        }
+
+        function renderServices() {
+            const list = CheresServices.active(services);
+            [['individual', 'servicesIndividual'], ['combo', 'servicesCombo']].forEach(([cat, id]) => {
+                const items = list.filter(s => s.category === cat);
+                document.getElementById(id).innerHTML = items.map(serviceCard).join('');
+                document.getElementById(id + 'Block').classList.toggle('hidden', !items.length);
+            });
+            // Seletor do agendamento: mantém a escolha se o serviço continuar ativo.
+            const sel = document.getElementById('service');
+            const chosen = sel.value;
+            sel.innerHTML = '<option value="">Selecione o serviço</option>' + list
+                .map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)} - ${formatMoney(s.price)}</option>`).join('');
+            if (list.some(s => s.name === chosen)) sel.value = chosen;
+        }
+
+        function renderPlans() {
+            const list = CheresServices.active(plans);
+            document.getElementById('plansGrid').innerHTML = list.map(p => `
+                <div class="bg-zinc-800 p-8 rounded-3xl text-center ${p.featured ? 'border-2 border-amber-500 md:scale-105' : 'border border-amber-600/20 hover:border-amber-500 transition'}">
+                    ${p.featured ? '<div class="bg-amber-500 text-black px-4 py-2 rounded-full inline-block mb-4 font-bold text-sm">MAIS POPULAR</div>' : ''}
+                    <h3 class="text-2xl font-bold mb-4">${escapeHtml(p.name)}</h3>
+                    <p class="text-5xl font-bold text-amber-500 mb-6">${formatMoney(p.price)}</p>
+                    ${p.perks.length ? `<ul class="space-y-3 text-zinc-300 mb-8">${p.perks.map(x => `<li class="flex items-center justify-center gap-2"><i class="fa-solid fa-check text-green-500" aria-hidden="true"></i> ${escapeHtml(x)}</li>`).join('')}</ul>` : ''}
+                    <button onclick="showSection('client')" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold hover:bg-amber-400 transition">ASSINAR AGORA</button>
+                </div>`).join('');
+            document.getElementById('plansEmpty').classList.toggle('hidden', list.length > 0);
+        }
+
+        db.ref('settings/services').on('value', snap => {
+            services = CheresServices.normalizeServices(snap.val());
+            renderServices();
+            renderProfile();
+        }, () => {});
+        db.ref('settings/plans').on('value', snap => { plans = CheresServices.normalizePlans(snap.val()); renderPlans(); }, () => {});
 
         scheduleRef.on('value', snapshot => {
             scheduleSettings = snapshot.val();
@@ -1479,6 +1444,8 @@
             dateInput.value = today;
             dateInput.addEventListener('change', () => generateTimeSlots(dateInput.value));
 
+            renderServices();
+            renderPlans();
             generateTimeSlots(today);
             document.getElementById('hero').classList.remove('hidden');
 

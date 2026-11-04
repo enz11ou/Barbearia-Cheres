@@ -461,3 +461,46 @@ describe('financeiro por período', () => {
         await assertSucceeds(push(ref(andre(), 'expenses/2026-11'), { label: 'Sem data (antigo)', amount: 10 }));
     });
 });
+
+describe('serviços, preços e planos (fase 3)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    const svc = { corte: { name: 'Corte', price: 35, category: 'individual', order: 0, active: true },
+        'corte-e-barba': { name: 'Corte e barba', price: 45.5, category: 'combo', order: 1, active: false } };
+    const plan = { 'plano-4-cortes': { name: 'Plano 4 Cortes', price: 110, perks: ['4 cortes ao mês', 'Atendimento prioritário'], featured: true, order: 0, active: true } };
+
+    test('visitante lê; só o barbeiro grava', async () => {
+        await assertSucceeds(set(ref(andre(), 'settings/services'), svc));
+        await assertSucceeds(set(ref(andre(), 'settings/plans'), plan));
+        await assertSucceeds(get(ref(db(), 'settings/services')));
+        await assertSucceeds(get(ref(db(), 'settings/plans')));
+        await assertFails(set(ref(alice(), 'settings/services'), svc));
+        await assertFails(set(ref(db(), 'settings/plans'), plan));
+        await assertFails(set(ref(alice(), 'settings/services/corte/price'), 1));
+    });
+    test('plano sem itens também vale', async () => {
+        const { perks, ...noPerks } = plan['plano-4-cortes'];
+        await assertSucceeds(set(ref(andre(), 'settings/plans'), { p: noPerks }));
+    });
+    test('formato inválido é recusado, mesmo para o barbeiro', async () => {
+        const c = svc.corte, p = plan['plano-4-cortes'];
+        for (const [path, value] of [
+            ['settings/services', 'x'],
+            ['settings/services/corte', { ...c, price: -1 }],
+            ['settings/services/corte', { ...c, price: '35' }],
+            ['settings/services/corte', { ...c, price: 10001 }],
+            ['settings/services/corte', { ...c, name: '' }],
+            ['settings/services/corte', { ...c, name: 'x'.repeat(61) }],
+            ['settings/services/corte', { ...c, category: 'outro' }],
+            ['settings/services/corte', { ...c, extra: 1 }],
+            ['settings/services/corte', { name: 'Corte', price: 35 }],                  // faltam campos
+            ['settings/services/id inválido', c],
+            ['settings/plans/p', { ...p, perks: ['', 'x'] }],
+            ['settings/plans/p', { ...p, perks: Array(7).fill('x') }],
+            ['settings/plans/p', { ...p, perks: ['x'.repeat(81)] }],
+            ['settings/plans/p', { ...p, perks: 'texto solto' }],
+            ['settings/plans/p', { ...p, featured: 'sim' }],
+            ['settings/plans/p', { ...p, extra: 1 }]
+        ]) await assertFails(set(ref(andre(), path), value));
+    });
+});
