@@ -9,13 +9,15 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
   usada pelo painel (CRM, tela Hoje) e pelo perfil do cliente. Também tem a **fidelidade** (`loyaltyStatus`).
 - `barbearia-cheres-main/services.js`: **regra única de serviços, preços e planos** (`window.CheresServices`), carregada pelas
   duas páginas. Nunca escrever listas de serviços/preços fixas no HTML: usar `normalizeServices`/`normalizePlans` e `priceOf`.
+- `barbearia-cheres-main/plans.js`: **regra única das assinaturas dos planos** (`window.CheresPlans`): uso do mês,
+  vencimento, cobrança, mensagem do WhatsApp. Carregado pelas duas páginas.
 - `barbearia-cheres-main/reports.js`: financeiro (faturamento, ticket médio, formas de pagamento) e CSV (`window.CheresReports`), só no painel.
 - `barbearia-cheres-main/manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png`: "Adicionar à tela inicial" do painel
   (abre em `/admin`). `sw.js`: service worker mínimo só para notificações no Android (sem `fetch`, sem cache offline).
 - `barbearia-cheres-main/schedule.js`: **regra única dos horários** (`window.CheresSchedule`), carregada pelas duas páginas.
   Nunca escrever listas de horários fixas no HTML: usar `CheresSchedule.forDate(date, settings, exceptions)`.
 - `database.rules.json`: regras do Realtime Database (fonte única das regras).
-- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`, `tests/attendance.test.mjs`, `tests/reports.test.mjs` e `tests/services.test.mjs`: testes das funções puras.
+- `tests/rules.test.mjs`: testes das regras no emulador. `tests/schedule.test.mjs`, `tests/attendance.test.mjs`, `tests/reports.test.mjs`, `tests/services.test.mjs` e `tests/plans.test.mjs`: testes das funções puras.
 - `backups/` (fora do Git): backups do banco antes de mexer em dados existentes.
 
 ## Deploy
@@ -65,7 +67,6 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
     (serviço com "Corte" no nome) desde `since`. `loyalty/{telefone}/redeemed/{id}` = `{ date, at }`: admin grava, cliente lê o dele.
   - Lista de espera: `waitlist/{data}/{telefone}` = `{ name, uid, createdAt, notifiedAt? }`. O cliente (e-mail confirmado)
     entra/sai só da própria vaga; `notifiedAt` só admin. Dias passados são apagados pelo painel (dado temporário).
-  - Fica para a Fase 4B: assinantes dos planos, cortes usados no mês, cobrança e receita dos planos.
 
 - Serviços e planos (Fase 3), aba "Serviços" do painel (público lê, só admin grava, formato validado nas regras):
   - `settings/services/{id}` = `{ name, price, category: individual|combo, order, active }`.
@@ -77,7 +78,21 @@ Site de agendamento da Barbearia Cheres (barbeiro: André). HTML + JavaScript pu
     tabela atual pelo nome (inclui desativados) > tabela antiga > 0. O `price` é gravado ao marcar Atendido e quando
     o dia fecha (`moveToHistory`); agendamento futuro segue o preço atual até o dia.
   - O editor trabalha num rascunho e grava a lista inteira com `set`; se o banco mudar com rascunho aberto, avisa.
-  - Os contadores/filtros de plano antigos do CRM (estimativa pelo serviço) foram removidos até a Fase 4B.
+  - Plano também tem `uses` (cortes por mês) e `services` (nomes dos serviços pagos pelo plano).
+
+- Assinantes (Fase 4B). Regras do dono: ciclo = mês do calendário com vencimento num dia fixo (1–28); cortes não
+  acumulam; corte pago pelo plano não conta na fidelidade; o cliente vê o próprio plano em Minha Conta (só leitura).
+  - `subscriptions/{telefone}` = `{ planId, planName, price, uses, services, dueDay, startDate, billFrom: "AAAA-MM",
+    status: active|paused|cancelled, statusAt, createdAt, owed?: { "AAAA-MM": true } }`. Nome, preço, usos e serviços
+    são copiados do plano na adesão (mudar o plano não muda quem já assina). Admin grava; cliente lê só o dele.
+  - `subscriptionPayments/{telefone}/{AAAA-MM}` = `{ amount, method: pix|cash|card, paidAt, recordedAt }` (mesmo acesso).
+  - Corte pelo plano = atendimento com `payment: { method: 'plan', amount: 0 }`. Uso do mês conta esses registros
+    desde o `startDate` da assinatura atual.
+  - Cobrança (`CheresPlans.billing`): meses de `billFrom` até o atual + `owed`. Pausar/cancelar grava em `owed` o que
+    já venceu sem pagar; retomar muda `billFrom` para o mês da retomada (meses pausados não são cobrados); reassinar
+    leva o `owed` junto. No primeiro mês, o vencimento nunca é antes do início/retomada.
+  - Financeiro: mensalidades entram no faturamento na data do pagamento (linha "Mensalidades dos planos"); não entram
+    no ticket médio nem no "serviço mais vendido". O CSV de atendimentos não traz mensalidades.
 
 ## Regras de segurança (não quebrar)
 - Visitante lê só `bookedSlots`, `blockedDates`, `blockedTimeSlots`, `settings` e `scheduleExceptions`.

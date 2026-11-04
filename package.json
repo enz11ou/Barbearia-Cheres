@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:schedule && npm run test:rules",
-    "test:schedule": "node --test tests/schedule.test.mjs tests/attendance.test.mjs tests/reports.test.mjs tests/services.test.mjs",
+    "test:schedule": "node --test tests/schedule.test.mjs tests/attendance.test.mjs tests/reports.test.mjs tests/services.test.mjs tests/plans.test.mjs",
     "test:rules": "firebase emulators:exec --only database --project barbearia-cheres-test \"node --test tests/rules.test.mjs\""
   },
   "devDependencies": {

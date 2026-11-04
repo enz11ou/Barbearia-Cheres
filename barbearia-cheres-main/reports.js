@@ -25,18 +25,39 @@
         return out;
     }
 
+    // Mensalidades pagas viram entradas do Financeiro (kind 'subscription'), na data do pagamento.
+    // payments: lista de CheresPlans.paymentsInRange; nameOf(telefone) devolve o nome do cliente.
+    var SUBSCRIPTION_LABEL = 'Mensalidades dos planos';
+    function subscriptionEntries(payments, nameOf) {
+        return (payments || []).map(function (p) {
+            return { kind: 'subscription', date: p.paidAt, time: '', service: SUBSCRIPTION_LABEL, phone: p.phoneKey,
+                name: nameOf ? nameOf(p.phoneKey) : '', amount: p.amount, method: p.method, month: p.month };
+        });
+    }
+
     // Resumo de um período [from, to] (datas AAAA-MM-DD, inclusive).
+    // total = atendimentos + mensalidades. count/average olham só os atendimentos; o ticket médio ignora
+    // os cortes pagos pelo plano (valor 0), para não puxar a média para baixo.
     function summarize(entries, from, to) {
         var list = entries.filter(function (e) { return e.date >= from && e.date <= to; });
-        var total = 0, byMethod = { pix: 0, cash: 0, card: 0, unknown: 0 }, byService = {};
+        var total = 0, byMethod = { pix: 0, cash: 0, card: 0, plan: 0, unknown: 0 }, byService = {};
+        var count = 0, paidCount = 0, paidTotal = 0, planUses = 0, subscriptions = 0, subscriptionCount = 0;
         list.forEach(function (e) {
             total += e.amount;
             byMethod[Object.prototype.hasOwnProperty.call(byMethod, e.method) ? e.method : 'unknown'] += e.amount;
             byService[e.service] = (byService[e.service] || 0) + e.amount;
+            if (e.kind === 'subscription') { subscriptions += e.amount; subscriptionCount++; return; }
+            count++;
+            if (e.method === 'plan') planUses++;
+            else { paidCount++; paidTotal += e.amount; }
         });
         var round = function (n) { return Math.round(n * 100) / 100; };
         Object.keys(byMethod).forEach(function (k) { byMethod[k] = round(byMethod[k]); });
-        return { count: list.length, total: round(total), average: list.length ? round(total / list.length) : 0, byMethod: byMethod, byService: byService };
+        return {
+            count: count, total: round(total), average: paidCount ? round(paidTotal / paidCount) : 0,
+            byMethod: byMethod, byService: byService, planUses: planUses,
+            subscriptions: round(subscriptions), subscriptionCount: subscriptionCount
+        };
     }
 
     function sumExpenses(monthExpenses) {
@@ -124,7 +145,7 @@
     function periodHighlights(entries, from, to) {
         var count = {}, clients = {};
         entries.forEach(function (e) {
-            if (e.date < from || e.date > to) return;
+            if (e.date < from || e.date > to || e.kind === 'subscription') return;
             count[e.service] = (count[e.service] || 0) + 1;
             var key = String(e.phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '') || (e.name ? 'nome:' + e.name : '');
             if (key) clients[key] = true;
@@ -148,6 +169,8 @@
 
     root.CheresReports = {
         attendedEntries: attendedEntries,
+        subscriptionEntries: subscriptionEntries,
+        SUBSCRIPTION_LABEL: SUBSCRIPTION_LABEL,
         summarize: summarize,
         sumExpenses: sumExpenses,
         weekRange: weekRange,

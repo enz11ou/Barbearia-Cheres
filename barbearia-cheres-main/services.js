@@ -4,7 +4,8 @@
 //
 // Formato no banco (chave = id gerado pelo painel):
 //   settings/services/{id} = { name, price, category: 'individual'|'combo', order, active }
-//   settings/plans/{id}    = { name, price, perks: ["4 cortes ao mês", ...], featured, order, active }
+//   settings/plans/{id}    = { name, price, perks: ["4 cortes ao mês", ...], featured, order, active,
+//                              uses: 4 (cortes por mês), services: ["Corte", ...] (serviços pagos pelo plano) }
 // Sem nada salvo, valem as listas padrão abaixo (as mesmas de antes da Fase 3).
 //
 // O agendamento guarda só o NOME do serviço. Por isso:
@@ -22,7 +23,7 @@
     };
     var INDIVIDUAL = ['Corte', 'Sobrancelha', 'Pigmentação', 'Reflexo', 'Nevou', 'Barba', 'Pé'];
 
-    var NAME_MAX = 60, PERK_MAX = 80, PERKS_MAX = 6, PRICE_MAX = 10000;
+    var NAME_MAX = 60, PERK_MAX = 80, PERKS_MAX = 6, PRICE_MAX = 10000, USES_MAX = 31, PLAN_SERVICES_MAX = 50;
     var ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 
     function slug(s) {
@@ -39,8 +40,10 @@
 
     function defaultPlans() {
         return [
-            { id: 'plano-4-cortes', name: 'Plano 4 Cortes', price: 110, perks: ['4 cortes ao mês', 'Atendimento prioritário'], featured: false, order: 0, active: true },
-            { id: 'plano-4-cortes-e-barba', name: 'Plano 4 Cortes e Barba', price: 140, perks: ['4 cortes e barba ao mês', 'Atendimento VIP'], featured: true, order: 1, active: true }
+            { id: 'plano-4-cortes', name: 'Plano 4 Cortes', price: 110, perks: ['4 cortes ao mês', 'Atendimento prioritário'], featured: false, order: 0, active: true,
+                uses: 4, services: ['Corte'] },
+            { id: 'plano-4-cortes-e-barba', name: 'Plano 4 Cortes e Barba', price: 140, perks: ['4 cortes e barba ao mês', 'Atendimento VIP'], featured: true, order: 1, active: true,
+                uses: 4, services: ['Corte', 'Barba', 'Corte e barba'] }
         ];
     }
 
@@ -76,11 +79,19 @@
             if (!name || price === null) return null;
             var perks = (Array.isArray(v.perks) ? v.perks : v.perks && typeof v.perks === 'object' ? Object.keys(v.perks).sort(function (a, b) { return a - b; }).map(function (k) { return v.perks[k]; }) : [])
                 .map(function (p) { return cleanName(p, PERK_MAX); }).filter(Boolean).slice(0, PERKS_MAX);
+            var uses = Number.isInteger(v.uses) && v.uses >= 1 && v.uses <= USES_MAX ? v.uses : 4;
             return { id: e[0], name: name, price: price, perks: perks, featured: v.featured === true,
-                order: cleanOrder(v.order), active: v.active !== false };
+                order: cleanOrder(v.order), active: v.active !== false, uses: uses, services: listOf(v.services) };
         }).filter(Boolean);
         if (!list.length) return defaultPlans();
         return list.sort(byOrder);
+    }
+
+    // Lista de textos (array ou objeto do Firebase), sem vazios nem repetidos.
+    function listOf(raw) {
+        var arr = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? Object.keys(raw).sort(function (a, b) { return a - b; }).map(function (k) { return raw[k]; }) : [];
+        var seen = {};
+        return arr.filter(function (x) { if (typeof x !== 'string' || !x || seen[x]) return false; seen[x] = true; return true; }).slice(0, PLAN_SERVICES_MAX);
     }
 
     function active(list) { return list.filter(function (s) { return s.active; }); }
@@ -127,6 +138,8 @@
             if (cleanPrice(p.price) === null) return 'Preço inválido em "' + name + '".';
             if ((p.perks || []).filter(function (x) { return cleanName(x, PERK_MAX + 1); }).length > PERKS_MAX) return 'Use no máximo ' + PERKS_MAX + ' itens por plano.';
             if ((p.perks || []).some(function (x) { return cleanName(x, PERK_MAX + 1).length > PERK_MAX; })) return 'Um item de "' + name + '" passa de ' + PERK_MAX + ' letras.';
+            if (!Number.isInteger(p.uses) || p.uses < 1 || p.uses > USES_MAX) return 'Em "' + name + '", informe de 1 a ' + USES_MAX + ' cortes por mês.';
+            if (!listOf(p.services).length) return 'Em "' + name + '", marque pelo menos um serviço incluído no plano.';
             var k = name.toLowerCase();
             if (seen[k]) return 'O plano "' + name + '" aparece duas vezes.';
             seen[k] = true;
@@ -149,6 +162,9 @@
         list.forEach(function (p, i) {
             var perks = (p.perks || []).map(function (x) { return cleanName(x, PERK_MAX); }).filter(Boolean);
             var item = { name: cleanName(p.name, NAME_MAX), price: cleanPrice(p.price), featured: p.featured === true, order: i, active: p.active !== false };
+            if (Number.isInteger(p.uses)) item.uses = p.uses;
+            var svc = listOf(p.services);
+            if (svc.length) item.services = svc;
             if (perks.length) item.perks = perks;
             out[p.id] = item;
         });
@@ -163,7 +179,7 @@
     }
 
     root.CheresServices = {
-        LEGACY_UNTIL: LEGACY_UNTIL, NAME_MAX: NAME_MAX, PERK_MAX: PERK_MAX, PERKS_MAX: PERKS_MAX, PRICE_MAX: PRICE_MAX,
+        LEGACY_UNTIL: LEGACY_UNTIL, NAME_MAX: NAME_MAX, USES_MAX: USES_MAX, PERK_MAX: PERK_MAX, PERKS_MAX: PERKS_MAX, PRICE_MAX: PRICE_MAX,
         defaultServices: defaultServices, defaultPlans: defaultPlans,
         normalizeServices: normalizeServices, normalizePlans: normalizePlans, active: active,
         priceByName: priceByName, priceOf: priceOf,
