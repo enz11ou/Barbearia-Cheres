@@ -504,3 +504,68 @@ describe('serviços, preços e planos (fase 3)', () => {
         ]) await assertFails(set(ref(andre(), path), value));
     });
 });
+
+describe('assinantes dos planos (fase 4B)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const alice = () => db(ALICE.uid, { email: 'alice@x.com', email_verified: true });
+    const sub = { planId: 'plano-4-cortes', planName: 'Plano 4 Cortes', price: 110, uses: 4, services: ['Corte'], dueDay: 10,
+        startDate: '2026-11-05', billFrom: '2026-11', status: 'active', statusAt: '2026-11-05', createdAt: 'x' };
+    const pay = { amount: 110, method: 'pix', paidAt: '2026-11-08', recordedAt: 'x' };
+
+    test('barbeiro grava; cliente lê só a própria assinatura e mensalidades', async () => {
+        await assertSucceeds(set(ref(andre(), `subscriptions/${ALICE.phone}`), sub));
+        await assertSucceeds(set(ref(andre(), `subscriptionPayments/${ALICE.phone}/2026-11`), pay));
+        await assertSucceeds(set(ref(andre(), `subscriptions/${BOB.phone}`), sub));
+        await assertSucceeds(get(ref(alice(), `subscriptions/${ALICE.phone}`)));
+        await assertSucceeds(get(ref(alice(), `subscriptionPayments/${ALICE.phone}`)));
+        await assertFails(get(ref(alice(), `subscriptions/${BOB.phone}`)));
+        await assertFails(get(ref(alice(), 'subscriptions')));
+        await assertFails(get(ref(db(), `subscriptions/${ALICE.phone}`)));
+        await assertFails(set(ref(alice(), `subscriptions/${ALICE.phone}`), sub));
+        await assertFails(update(ref(alice(), `subscriptions/${ALICE.phone}`), { status: 'cancelled' }));
+        await assertFails(set(ref(alice(), `subscriptionPayments/${ALICE.phone}/2026-12`), pay));
+    });
+    test('pausar/retomar por update', async () => {
+        await assertSucceeds(set(ref(andre(), `subscriptions/${ALICE.phone}`), sub));
+        await assertSucceeds(update(ref(andre(), `subscriptions/${ALICE.phone}`), { status: 'paused', statusAt: '2026-12-01' }));
+        await assertSucceeds(update(ref(andre(), `subscriptions/${ALICE.phone}`), { status: 'active', statusAt: '2027-01-03', billFrom: '2027-01' }));
+    });
+    test('formato inválido é recusado, mesmo para o barbeiro', async () => {
+        for (const [path, value] of [
+            [`subscriptions/${ALICE.phone}`, { ...sub, dueDay: 29 }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, dueDay: 0 }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, uses: 0 }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, status: 'ativo' }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, startDate: '05/11/2026' }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, billFrom: '2026-13' }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, services: 'Corte' }],
+            [`subscriptions/${ALICE.phone}`, { ...sub, extra: 1 }],
+            [`subscriptions/abc`, sub],
+            [`subscriptions/${ALICE.phone}`, { planName: 'X', price: 1 }],
+            [`subscriptionPayments/${ALICE.phone}/2026-13`, pay],
+            [`subscriptionPayments/${ALICE.phone}/2026-11`, { ...pay, method: 'plan' }],
+            [`subscriptionPayments/${ALICE.phone}/2026-11`, { ...pay, amount: -1 }],
+            [`subscriptionPayments/${ALICE.phone}/2026-11`, { ...pay, paidAt: 'ontem' }],
+            [`subscriptionPayments/${ALICE.phone}/2026-11`, { amount: 110 }]
+        ]) await assertFails(set(ref(andre(), path), value));
+    });
+    test('plano com cortes por mês e serviços incluídos', async () => {
+        const p = { name: 'Plano 4 Cortes', price: 110, featured: false, order: 0, active: true, uses: 4, services: ['Corte'] };
+        await assertSucceeds(set(ref(andre(), 'settings/plans'), { p }));
+        await assertFails(set(ref(andre(), 'settings/plans'), { p: { ...p, uses: 0 } }));
+        await assertFails(set(ref(andre(), 'settings/plans'), { p: { ...p, uses: 32 } }));
+        await assertFails(set(ref(andre(), 'settings/plans'), { p: { ...p, services: 'Corte' } }));
+        await assertFails(set(ref(andre(), 'settings/plans'), { p: { ...p, services: [''] } }));
+    });
+});
+
+describe('assinantes: dívida guardada (fase 4B)', () => {
+    const andre = () => db(ANDRE.uid, { email: ANDRE.email, email_verified: true });
+    const sub = { planId: 'p', planName: 'Plano', price: 110, uses: 4, services: ['Corte'], dueDay: 10,
+        startDate: '2026-11-05', billFrom: '2026-11', status: 'active', statusAt: '2026-11-05' };
+    test('owed aceita só meses com true', async () => {
+        await assertSucceeds(set(ref(andre(), `subscriptions/${ALICE.phone}`), { ...sub, status: 'paused', owed: { '2026-11': true } }));
+        await assertFails(set(ref(andre(), `subscriptions/${ALICE.phone}`), { ...sub, owed: { '2026-11': 'sim' } }));
+        await assertFails(set(ref(andre(), `subscriptions/${ALICE.phone}`), { ...sub, owed: { novembro: true } }));
+    });
+});

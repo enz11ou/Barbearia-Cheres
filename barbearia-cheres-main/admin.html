@@ -25,6 +25,7 @@
     <script src="attendance.js"></script>
     <script src="reports.js"></script>
     <script src="services.js"></script>
+    <script src="plans.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -319,13 +320,22 @@
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Faturamento</p><p id="finTotal" class="text-2xl sm:text-3xl font-bold text-emerald-400">R$ 0,00</p><p id="finCount" class="text-xs text-zinc-500 mt-1"></p></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Despesas</p><p id="finExpTotal" class="text-2xl sm:text-3xl font-bold text-red-400">R$ 0,00</p><p id="finExpCount" class="text-xs text-zinc-500 mt-1"></p></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Lucro</p><p id="finProfit" class="text-2xl sm:text-3xl font-bold text-amber-400">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Faturamento − despesas (cada despesa conta no dia lançado)</p></div>
-                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Ticket médio</p><p id="finAvg" class="text-2xl sm:text-3xl font-bold text-white">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Por atendimento</p></div>
+                    <div class="stat-card p-4 sm:p-5 rounded-2xl"><p class="text-zinc-400 text-sm">Ticket médio</p><p id="finAvg" class="text-2xl sm:text-3xl font-bold text-white">R$ 0,00</p><p class="text-xs text-zinc-500 mt-1">Por atendimento cobrado (sem os do plano)</p></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
                     <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div><p class="text-zinc-400 text-sm">Clientes atendidos</p><p id="finClients" class="text-2xl font-bold text-blue-400">0</p></div><i class="fa-solid fa-users text-3xl text-blue-400 opacity-30"></i></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-zinc-400 text-sm">Serviço mais vendido</p><p id="finTopService" class="text-xl font-bold text-purple-400 truncate">—</p><p id="finTopCount" class="text-xs text-zinc-500"></p></div><i class="fa-solid fa-star text-3xl text-purple-400 opacity-30"></i></div>
                     <div class="stat-card p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3"><div><p class="text-zinc-400 text-sm">Próximos agendamentos</p><p id="finUpcoming" class="text-2xl font-bold text-amber-500">0</p><p class="text-xs text-zinc-500">a partir de agora</p></div><i class="fa-solid fa-calendar-check text-3xl text-amber-500 opacity-30"></i></div>
                 </div>
+
+                <section class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 mb-6" aria-labelledby="subsTitle">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+                        <h3 id="subsTitle" class="text-lg font-bold text-amber-500"><i class="fa-solid fa-star mr-2" aria-hidden="true"></i>Mensalidades dos planos</h3>
+                        <p id="subsSummary" class="text-sm text-zinc-400"></p>
+                    </div>
+                    <p class="text-xs text-zinc-500 mb-4">Situação de hoje (não depende do período acima). Para assinar um cliente, abra a ficha dele no CRM.</p>
+                    <div id="subsList" class="space-y-2"></div>
+                </section>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 mb-6">
                     <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5">
@@ -378,6 +388,25 @@
                             <i class="fa-solid fa-users text-4xl text-blue-400 opacity-30"></i>
                         </div>
                     </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Assinantes ativos</p>
+                                <p id="crmSubsCount" class="text-3xl font-bold text-emerald-400">0</p>
+                            </div>
+                            <i class="fa-solid fa-star text-4xl text-emerald-400 opacity-30" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card p-6 rounded-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-zinc-400 text-sm mb-1">Receita mensal dos planos</p>
+                                <p id="crmSubsMonthly" class="text-3xl font-bold text-amber-400">R$ 0,00</p>
+                                <p class="text-zinc-500 text-xs mt-1">Soma das assinaturas ativas</p>
+                            </div>
+                            <i class="fa-solid fa-sack-dollar text-4xl text-amber-400 opacity-30" aria-hidden="true"></i>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 mb-8">
@@ -411,6 +440,7 @@
                             <option value="">Todos os clientes</option>
                             <option value="frequent">Clientes Frequentes (3+)</option>
                             <option value="new">Novos Clientes (1 visita)</option>
+                            <option value="subscribers">Assinantes de plano</option>
                             <option value="account">Com conta no site</option>
                             <option value="manual">Cadastrados por mim</option>
                             <option value="novisit">Sem visitas ainda</option>
@@ -551,7 +581,7 @@
                             <h3 id="planTitle" class="text-xl font-bold text-amber-500"><i class="fa-solid fa-star mr-2"></i>Planos mensais</h3>
                             <span id="planDirty" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">Alterações não salvas</span>
                         </div>
-                        <p class="text-zinc-400 text-sm mb-5">Como os planos aparecem no site. Um item por linha (até 6). "Destaque" mostra o selo MAIS POPULAR.</p>
+                        <p class="text-zinc-400 text-sm mb-5">Como os planos aparecem no site. Um item por linha (até 6). "Destaque" mostra o selo MAIS POPULAR. "Cortes por mês" e "Serviços incluídos" valem para quem assinar daqui para frente: quem já assina mantém o que contratou.</p>
                         <p id="planRemote" class="hidden text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mb-3" role="status">Os planos foram alterados em outro aparelho. Toque em Desfazer para ver a versão atual antes de salvar.</p>
                         <div id="planList" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
                         <div class="flex flex-col sm:flex-row gap-3 mt-5">
@@ -678,17 +708,55 @@
             </div>
             <fieldset class="mb-4">
                 <legend class="text-sm font-semibold mb-2">Forma de pagamento</legend>
-                <div class="grid grid-cols-3 gap-2">
+                <div id="atMethods" class="grid grid-cols-3 gap-2">
                     <label class="pay-opt"><input type="radio" name="atMethod" value="pix" class="sr-only peer" checked><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-brands fa-pix mr-1"></i>Pix</span></label>
                     <label class="pay-opt"><input type="radio" name="atMethod" value="cash" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-money-bill mr-1"></i>Dinheiro</span></label>
                     <label class="pay-opt"><input type="radio" name="atMethod" value="card" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-credit-card mr-1"></i>Cartão</span></label>
+                    <label id="atPlanOpt" class="pay-opt hidden col-span-3"><input type="radio" name="atMethod" value="plan" class="sr-only peer"><span class="peer-checked:bg-emerald-500 peer-checked:text-black peer-checked:border-emerald-500 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-300 block text-center border border-emerald-700 text-emerald-300 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-star mr-1" aria-hidden="true"></i>Plano (sem cobrar)</span></label>
                 </div>
+                <p id="atPlanHint" class="hidden text-xs mt-2"></p>
             </fieldset>
             <label for="atAmount" class="block text-sm font-semibold mb-2">Valor recebido (R$)</label>
             <input type="text" id="atAmount" inputmode="decimal" autocomplete="off" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-amber-500">
             <p id="atPriceHint" class="text-xs text-zinc-500 mt-1"></p>
             <div class="grid grid-cols-2 gap-3 mt-5">
                 <button type="button" onclick="closeAttendModal()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-3 rounded-xl font-semibold transition">Cancelar</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-bold transition"><i class="fa-solid fa-check mr-1"></i>Confirmar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MENSALIDADE PAGA (Fase 4B) -->
+    <div id="subPayModal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="spTitle" onclick="if (event.target === this) closeSubPayModal()">
+        <form onsubmit="event.preventDefault(); saveSubPayment();" class="bg-zinc-900 border border-zinc-700 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div class="min-w-0">
+                    <h3 id="spTitle" class="text-xl font-bold text-emerald-400">Mensalidade paga</h3>
+                    <p id="spInfo" class="text-sm text-zinc-400 mt-1"></p>
+                </div>
+                <button type="button" onclick="closeSubPayModal()" class="text-zinc-400 hover:text-white text-2xl leading-none p-1" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <fieldset class="mb-4">
+                <legend class="text-sm font-semibold mb-2">Forma de pagamento</legend>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="pay-opt"><input type="radio" name="spMethod" value="pix" class="sr-only peer" checked><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-brands fa-pix mr-1"></i>Pix</span></label>
+                    <label class="pay-opt"><input type="radio" name="spMethod" value="cash" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-money-bill mr-1"></i>Dinheiro</span></label>
+                    <label class="pay-opt"><input type="radio" name="spMethod" value="card" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-black peer-checked:border-amber-500 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 block text-center border border-zinc-600 rounded-xl py-3 font-semibold cursor-pointer"><i class="fa-solid fa-credit-card mr-1"></i>Cartão</span></label>
+                </div>
+            </fieldset>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="spAmount" class="block text-sm font-semibold mb-2">Valor (R$)</label>
+                    <input type="text" id="spAmount" inputmode="decimal" autocomplete="off" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label for="spDate" class="block text-sm font-semibold mb-2">Pago em</label>
+                    <input type="date" id="spDate" required class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-3 focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+            <p class="text-xs text-zinc-500 mt-2">Entra no Financeiro na data do pagamento.</p>
+            <div class="grid grid-cols-2 gap-3 mt-5">
+                <button type="button" onclick="closeSubPayModal()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-3 rounded-xl font-semibold transition">Cancelar</button>
                 <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-bold transition"><i class="fa-solid fa-check mr-1"></i>Confirmar</button>
             </div>
         </form>
@@ -820,6 +888,7 @@
         const loyaltySettingsRef = db.ref('settings/loyalty');
         const waitlistRef = db.ref('waitlist');            // lista de espera por dia
         let clientNotes = {}, expenses = {}, loyaltyData = {}, loyaltyCfg = null, waitlist = {};
+        let subscriptions = {}, subPayments = {};          // assinantes dos planos e mensalidades pagas (Fase 4B)
 
         // ============ DATA STRUCTURES ============
         let scheduleSettings = null;   // null = padrão do schedule.js (ter a sáb, 09:00 a 18:00)
@@ -1017,6 +1086,19 @@
                 if (!planDirty) { planDraft = null; renderPlansEditor(); }
                 else if (!planSaving) document.getElementById('planRemote').classList.remove('hidden');
             }, sessionLost);
+            db.ref('subscriptions').on('value', snap => {
+                subscriptions = snap.val() || {};
+                updateCRMTable();
+                renderToday();
+                renderSubscriptionsPanel();
+            }, sessionLost);
+            db.ref('subscriptionPayments').on('value', snap => {
+                subPayments = snap.val() || {};
+                filterCRM();
+                refreshCrmDetail();
+                renderSubscriptionsPanel();
+                renderFinance();
+            }, sessionLost);
             loyaltySettingsRef.on('value', snap => { loyaltyCfg = snap.val(); renderLoyaltySettings(); refreshCrmDetail(); renderToday(); }, sessionLost);
             waitlistRef.on('value', snap => { waitlist = snap.val() || {}; renderToday(); cleanupPastWaitlist(); }, sessionLost);
 
@@ -1128,7 +1210,8 @@
                 const entry = {
                     date: a.date, time: a.time || '', service: a.service, by: a.cancelledBy || '',
                     outcome, key: a.key, node,
-                    paid: CheresAttendance.paidValue(a, servicePrices, outcome), method: CheresAttendance.methodLabel(a)
+                    paid: CheresAttendance.paidValue(a, servicePrices, outcome), method: CheresAttendance.methodLabel(a),
+                    viaPlan: CheresPlans.viaPlan(a)
                 };
                 e[buckets[outcome]].push(entry);
             });
@@ -1258,12 +1341,16 @@
         function updateCRMTable() {
             crmAllClients = buildClientData();
             document.getElementById('crmTotalClients').textContent = crmAllClients.length;
+            const subSum = CheresPlans.summary(subscriptions);
+            document.getElementById('crmSubsCount').textContent = subSum.count;
+            document.getElementById('crmSubsMonthly').textContent = money(subSum.monthly);
             filterCRM();
             refreshNameList();
             renderRecencySummary();
             const open = document.getElementById('crmDetail');
             if (open && !open.classList.contains('hidden') && open.dataset.phone) refreshCrmDetail();
             renderAdminAppointments();
+            renderSubscriptionsPanel();   // nomes dos assinantes dependem da lista de clientes
         }
 
         function filterCRM() {
@@ -1277,6 +1364,7 @@
                 if (filter === 'new') matchFilter = c.visits === 1;
                 if (filter === 'novisit') matchFilter = c.visits === 0;
                 if (filter === 'account') matchFilter = c.hasAccount;
+                if (filter === 'subscribers') { const sb = subOf(c.phoneKey); matchFilter = !!sb && sb.status === 'active'; }
                 if (filter === 'manual') matchFilter = c.manual && !c.hasAccount;
                 if (RECENCY_ORDER.includes(filter)) { const k = getRecencyTag(c).key; matchFilter = k === filter || (filter === 'never' && k === 'first'); }
                 return matchSearch && matchFilter;
@@ -1303,6 +1391,7 @@
                         <div class="flex flex-wrap gap-1 mt-1">
                             <span class="text-xs ${origin.color} ${origin.bg} px-2 py-0.5 rounded-full">${origin.label}</span>
                             <span class="text-xs ${tag.color} ${tag.bg} px-2 py-0.5 rounded-full">${tag.label}</span>
+                            ${subBadgeHtml(client.phoneKey)}
                         </div>
                         ${client.email ? `<div class="text-xs text-zinc-500 mt-1">${escapeHtml(client.email)}</div>` : ''}
                     </td>
@@ -2374,12 +2463,33 @@
             const amount = rec.payment && typeof rec.payment.amount === 'number' ? rec.payment.amount : price;
             document.getElementById('atAmount').value = amount.toFixed(2).replace('.', ',');
             document.getElementById('atPriceHint').textContent = `Preço de tabela: ${money(price)}. Altere se deu desconto.`;
-            const method = (rec.payment && rec.payment.method) || 'pix';
+            // Assinante: mostra a opção "Plano" e já sugere quando o serviço está no plano e ainda há uso no mês.
+            const pk = recPhoneKey(rec), sb = subOf(pk);
+            const use = sb ? CheresPlans.planUse(sb, clientRecords(pk), rec) : null;
+            const showPlan = !!sb && (sb.status === 'active' || CheresPlans.viaPlan(rec));
+            document.getElementById('atPlanOpt').classList.toggle('hidden', !showPlan);
+            const hint = document.getElementById('atPlanHint');
+            hint.classList.toggle('hidden', !showPlan);
+            if (showPlan) {
+                hint.className = `text-xs mt-2 ${use.eligible ? 'text-emerald-300' : 'text-amber-300'}`;
+                hint.textContent = `${sb.planName}: ${use.used} de ${sb.uses} cortes usados em ${CheresPlans.monthLabel(CheresPlans.monthOf(rec.date))}.` + (use.eligible ? ' Este atendimento pode entrar no plano.' : ` ${use.reason}: cobre normalmente.`);
+            }
+            attendTarget.planUse = use;
+            attendTarget.listPrice = price;
+            const method = (rec.payment && rec.payment.method) || (use && use.eligible ? 'plan' : 'pix');
             document.querySelectorAll('input[name="atMethod"]').forEach(r => { r.checked = r.value === method; });
+            if (method === 'plan') document.getElementById('atAmount').value = '0,00';
             document.getElementById('attendModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
             document.querySelector('input[name="atMethod"]:checked').focus();
         }
+
+        document.querySelectorAll('input[name="atMethod"]').forEach(r => r.addEventListener('change', () => {
+            if (!attendTarget || !r.checked) return;
+            const amountEl = document.getElementById('atAmount');
+            if (r.value === 'plan') amountEl.value = '0,00';
+            else if (CheresAttendance.parseAmount(amountEl.value) === 0) amountEl.value = Number(attendTarget.listPrice || 0).toFixed(2).replace('.', ',');
+        }));
 
         function closeAttendModal() {
             document.getElementById('attendModal').classList.add('hidden');
@@ -2422,16 +2532,21 @@
             const amount = CheresAttendance.parseAmount(document.getElementById('atAmount').value);
             if (amount === null) { alert('Informe o valor recebido (ex.: 35 ou 30,50).'); return; }
             const method = (document.querySelector('input[name="atMethod"]:checked') || {}).value || 'pix';
+            if (method === 'plan') {
+                const use = attendTarget.planUse;
+                if (use && !use.eligible && !confirm(`${use.reason}. Registrar como pago pelo plano mesmo assim?`)) return;
+                if (amount !== 0 && !confirm(`Pelo plano o valor fica R$ 0,00 (você digitou ${money(amount)}). Continuar?`)) return;
+            }
             const update = {
                 attendance: 'attended',
-                payment: { method, amount },
+                payment: { method, amount: method === 'plan' ? 0 : amount },
                 attendanceAt: new Date().toISOString()
             };
             if (typeof rec.price !== 'number') update.price = CheresAttendance.listPrice(rec, servicePrices);
             try {
                 await updateAttendanceRecord(node, rec, update, 'attended');
                 closeAttendModal();
-                showToast({ title: 'Atendimento registrado', body: `${rec.name || 'Cliente'} · ${CheresAttendance.METHODS[method]} · ${money(amount)}`, kind: 'ok' });
+                showToast({ title: 'Atendimento registrado', body: `${rec.name || 'Cliente'} · ${CheresAttendance.METHODS[method]} · ${money(update.payment.amount)}`, kind: 'ok' });
             } catch (e) { failSave(e); }
         }
 
@@ -2750,6 +2865,7 @@
             if (e.key !== 'Escape') return;
             if (!document.getElementById('attendModal').classList.contains('hidden')) closeAttendModal();
             if (!document.getElementById('moveModal').classList.contains('hidden')) closeMoveModal();
+            if (!document.getElementById('subPayModal').classList.contains('hidden')) closeSubPayModal();
         });
 
         // ============ FINANCEIRO ============
@@ -2760,8 +2876,13 @@
             if (financeCache.a !== appointments || financeCache.h !== appointmentHistory) {
                 financeCache = { a: appointments, h: appointmentHistory, entries: CheresReports.attendedEntries(appointments, appointmentHistory, servicePrices, isTimePast) };
             }
-            return financeCache.entries;
+            if (subEntriesCache.p !== subPayments || subEntriesCache.n !== crmAllClients) {
+                const nameOf = pk => { const c = crmAllClients.find(x => x.phoneKey === pk); return c ? c.name : formatPhone(pk); };
+                subEntriesCache = { p: subPayments, n: crmAllClients, e: CheresReports.subscriptionEntries(CheresPlans.paymentsInRange(subPayments, '2000-01-01', '2999-12-31'), nameOf) };
+            }
+            return subEntriesCache.e.length ? financeCache.entries.concat(subEntriesCache.e) : financeCache.entries;
         }
+        let subEntriesCache = { p: null, n: null, e: [] };
 
         const METHOD_STYLE = { pix: ['Pix', 'bg-emerald-500'], cash: ['Dinheiro', 'bg-amber-500'], card: ['Cartão', 'bg-blue-500'], unknown: ['Não informado', 'bg-zinc-500'] };
         const CHART_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#84cc16'];
@@ -2853,7 +2974,8 @@
             });
             put('finPeriodLabel', periodLabel(from, to));
 
-            put('finTotal', money(sum.total)); put('finCount', count(sum.count, 'atendimento', 'atendimentos'));
+            put('finTotal', money(sum.total));
+            put('finCount', count(sum.count, 'atendimento', 'atendimentos') + (sum.subscriptions ? ` + ${money(sum.subscriptions)} de planos` : '') + (sum.planUses ? ` (${sum.planUses} pelo plano)` : ''));
             put('finExpTotal', money(spent)); put('finExpCount', count(exp.length, 'despesa', 'despesas'));
             put('finProfit', money(sum.total - spent));
             document.getElementById('finProfit').className = `text-2xl sm:text-3xl font-bold ${sum.total - spent < 0 ? 'text-red-400' : 'text-amber-400'}`;
@@ -2865,8 +2987,9 @@
 
             // Formas de pagamento
             const methods = document.getElementById('finMethods');
-            methods.innerHTML = sum.count ? '' : '<p class="text-sm text-zinc-500">Nenhum atendimento no período.</p>';
-            if (sum.count) Object.keys(METHOD_STYLE).forEach(k => {
+            const hasMoney = sum.count || sum.subscriptionCount;
+            methods.innerHTML = hasMoney ? '' : '<p class="text-sm text-zinc-500">Nenhum atendimento no período.</p>';
+            if (hasMoney) Object.keys(METHOD_STYLE).forEach(k => {
                 const value = sum.byMethod[k] || 0;
                 if (k === 'unknown' && !value) return;
                 const pct = sum.total ? Math.round((value / sum.total) * 100) : 0;
@@ -2973,7 +3096,7 @@
 
         // ============ FICHA: ANOTAÇÕES, ANIVERSÁRIO E FIDELIDADE ============
         function loyaltyFor(client) {
-            const records = [...client.completed, ...client.pending, ...client.noshows].map(x => ({ date: x.date, service: x.service, outcome: x.outcome }));
+            const records = [...client.completed, ...client.pending, ...client.noshows].map(x => ({ date: x.date, service: x.service, outcome: x.outcome, viaPlan: x.viaPlan }));
             const redeemed = (loyaltyData[client.phoneKey] && loyaltyData[client.phoneKey].redeemed) || {};
             return { ...CheresAttendance.loyaltyStatus(records, Object.keys(redeemed).length, loyaltyCfg), redeemed };
         }
@@ -3020,6 +3143,7 @@
                             <li class="flex items-center justify-between gap-2"><span>Brinde usado em ${escapeHtml(formatDateBR(r.date))}</span>
                             <button type="button" class="cn-undo text-zinc-500 hover:text-red-400 underline px-2 py-1" data-id="${escapeHtml(id)}">desfazer</button></li>`).join('')}</ul>` : ''}
                     </div>
+                    ${subscriptionCardHtml(client)}
                 </div>`;
         }
 
@@ -3029,6 +3153,7 @@
             const redeem = root.querySelector('.cn-redeem');
             if (redeem) redeem.onclick = () => redeemReward(phoneKey);
             root.querySelectorAll('.cn-undo').forEach(b => { b.onclick = () => undoReward(phoneKey, b.dataset.id); });
+            bindSubscriptionCard(root, phoneKey);
         }
 
         // Redesenha a ficha aberta sem perder anotação digitada e ainda não salva.
@@ -3036,7 +3161,7 @@
         function refreshCrmDetail() {
             const detail = document.getElementById('crmDetail');
             if (!detail || detail.classList.contains('hidden') || !detail.dataset.phone) return;
-            if (document.activeElement && ['cnNotes', 'cnBirthday'].includes(document.activeElement.id)) return;
+            if (document.activeElement && (['cnNotes', 'cnBirthday'].includes(document.activeElement.id) || /^sub(Plan|Start|Due)$/.test(document.activeElement.id))) return;
             const notesEl = document.getElementById('cnNotes'), bdayEl = document.getElementById('cnBirthday');
             const draft = crmNotesDirty && notesEl && bdayEl ? { notes: notesEl.value, bday: bdayEl.value, phone: detail.dataset.phone } : null;
             showCRMDetail(detail.dataset.phone, true);
@@ -3107,7 +3232,7 @@
         // ============ SERVIÇOS E PLANOS (editor) ============
         // Edita um rascunho local; só grava no banco ao tocar em Salvar (a lista inteira de uma vez).
         let svcDraft = null, planDraft = null, svcDirty = false, planDirty = false;
-        const cloneList = list => list.map(x => ({ ...x, perks: x.perks ? [...x.perks] : undefined }));
+        const cloneList = list => list.map(x => ({ ...x, perks: x.perks ? [...x.perks] : undefined, services: x.services ? [...x.services] : undefined }));
         const fieldCls = 'bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500';
         const iconBtn = 'w-11 h-11 shrink-0 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed transition';
 
@@ -3298,6 +3423,19 @@
                         <label for="planPerks${i}" class="block text-xs text-zinc-400 mb-1">O que inclui (um por linha)</label>
                         <textarea id="planPerks${i}" data-i="${i}" data-f="perks" rows="3" oninput="onPlanInput(this)" class="${fieldCls} w-full resize-y">${escapeHtml(p.perks.join('\n'))}</textarea>
                     </div>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="sm:w-32 shrink-0">
+                            <label for="planUses${i}" class="block text-xs text-zinc-400 mb-1">Cortes por mês</label>
+                            <input id="planUses${i}" data-i="${i}" data-f="uses" type="number" inputmode="numeric" min="1" max="${CheresServices.USES_MAX}" step="1" value="${Number.isInteger(p.uses) ? p.uses : ''}" oninput="onPlanInput(this)" class="${fieldCls} w-full">
+                        </div>
+                        <fieldset class="flex-1 min-w-0">
+                            <legend class="block text-xs text-zinc-400 mb-1">Serviços incluídos (pagos pelo plano)</legend>
+                            <div class="flex flex-wrap gap-1.5">${planServiceOptions(p).map(n => `
+                                <label class="inline-flex items-center gap-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg px-3 min-h-[44px] cursor-pointer select-none">
+                                    <input type="checkbox" data-i="${i}" data-f="svc" data-name="${escapeHtml(n)}" ${(p.services || []).includes(n) ? 'checked' : ''} onchange="onPlanInput(this)" class="w-4 h-4 accent-amber-500"> ${escapeHtml(n)}
+                                </label>`).join('')}</div>
+                        </fieldset>
+                    </div>
                     <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                         <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none min-h-[44px]"><input type="checkbox" id="planActive${i}" data-i="${i}" data-f="active" ${p.active ? 'checked' : ''} onchange="onPlanInput(this, true)" aria-label="Mostrar ${escapeHtml(p.name || 'plano novo')} no site" class="w-5 h-5 accent-amber-500"> No site</label>
                         <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none mr-auto min-h-[44px]"><input type="checkbox" id="planFeatured${i}" data-i="${i}" data-f="featured" ${p.featured ? 'checked' : ''} onchange="onPlanInput(this, true)" aria-label="Destacar ${escapeHtml(p.name || 'plano novo')} como mais popular" class="w-5 h-5 accent-amber-500"> Destaque</label>
@@ -3313,6 +3451,12 @@
             if (f === 'price') p.price = el.value === '' ? NaN : Number(el.value);
             else if (f === 'active' || f === 'featured') p[f] = el.checked;
             else if (f === 'perks') p.perks = el.value.split('\n');
+            else if (f === 'uses') p.uses = el.value === '' ? NaN : Number(el.value);
+            else if (f === 'svc') {
+                const set = new Set(p.services || []);
+                if (el.checked) set.add(el.dataset.name); else set.delete(el.dataset.name);
+                p.services = planServiceOptions(p).filter(n => set.has(n));
+            }
             else p[f] = el.value;
             setPlanDirty(true);
             if (rerender) withFocus(renderPlansEditor, (f === 'featured' ? 'planFeatured' : 'planActive') + el.dataset.i);
@@ -3331,7 +3475,7 @@
         function addPlanRow() {
             if (!planDraft) planDraft = cloneList(plans);
             const id = CheresServices.newId('plano', planDraft.map(p => p.id));
-            planDraft.push({ id, name: '', price: NaN, perks: [], featured: false, active: true });
+            planDraft.push({ id, name: '', price: NaN, perks: [], featured: false, active: true, uses: 4, services: [] });
             setPlanDirty(true);
             withFocus(renderPlansEditor, 'planName' + (planDraft.length - 1));
         }
@@ -3363,12 +3507,229 @@
 
         window.addEventListener('beforeunload', e => { if (svcDirty || planDirty) { e.preventDefault(); e.returnValue = ''; } });
 
+        // ============ ASSINANTES DOS PLANOS (Fase 4B) ============
+        function subOf(pk) { return pk ? CheresPlans.normalizeSubscription(subscriptions[pk]) : null; }
+        function recPhoneKey(rec) { return normalizePhone(rec.phone || '') || rec.phoneKey || ''; }
+        // Agendamentos e histórico de um cliente (para contar os cortes do plano no mês).
+        function clientRecords(pk) { return [...appointments, ...appointmentHistory].filter(a => recPhoneKey(a) === pk); }
+
+        // Serviços que aparecem para marcar num plano: os ativos + os já marcados (mesmo desativados depois).
+        function planServiceOptions(p) {
+            const names = CheresServices.active(services).map(sv => sv.name);
+            (p.services || []).forEach(n => { if (!names.includes(n)) names.push(n); });
+            return names;
+        }
+
+        const SUB_STATE = {
+            paid: ['Paga', 'bg-emerald-900/60 text-emerald-300'], late: ['Atrasada', 'bg-red-900/60 text-red-300'],
+            soon: ['Vence em breve', 'bg-amber-900/60 text-amber-300'], open: ['Em aberto', 'bg-zinc-700 text-zinc-200']
+        };
+        function subStateChip(state) { const [label, cls] = SUB_STATE[state]; return `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}">${label}</span>`; }
+
+        function subBadgeHtml(pk) {
+            const sb = subOf(pk);
+            if (!sb) return '';
+            const late = CheresPlans.billing(sb, subPayments[pk], localToday()).late;
+            if (sb.status === 'cancelled' && !late) return '';
+            const cls = late ? 'text-red-300 bg-red-500/15' : sb.status === 'paused' ? 'text-zinc-300 bg-zinc-600/40' : 'text-emerald-300 bg-emerald-400/15';
+            const note = sb.status !== 'active' ? ` (${CheresPlans.STATUS[sb.status].toLowerCase()})` : '';
+            return `<span class="text-xs ${cls} px-2 py-0.5 rounded-full">${escapeHtml(sb.planName)}${note}${late ? ' · em atraso' : ''}</span>`;
+        }
+
+        // Mensalidades em aberto (com Cobrar / Marcar como paga) e as últimas pagas (com desfazer).
+        function subPaymentsHtml(client, sb, bill) {
+            const pk = client.phoneKey, pays = subPayments[pk] || {};
+            const unpaid = bill.months.filter(m => m.state !== 'paid');
+            const paidMonths = Object.keys(pays).sort().reverse().slice(0, 4);
+            return `${unpaid.length ? `<div class="space-y-2 mb-3">${unpaid.map(m => `
+                    <div class="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-xl px-3 py-2">
+                        <span class="text-sm mr-auto">Mensalidade de ${escapeHtml(CheresPlans.monthLabel(m.month))} · vence ${escapeHtml(formatDateBR(m.due).slice(0, 5))} ${subStateChip(m.state)}</span>
+                        <a href="${escapeHtml(waLink(pk, CheresPlans.chargeMessage(client.name, sb, m)))}" target="_blank" rel="noopener" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg font-semibold"><i class="fa-brands fa-whatsapp mr-1"></i>Cobrar</a>
+                        <button type="button" class="sub-pay text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold" data-month="${m.month}">Marcar como paga</button>
+                    </div>`).join('')}</div>`
+                : sb.status === 'active' && bill.next ? `<p class="text-sm text-emerald-300 mb-3"><i class="fa-solid fa-check mr-1" aria-hidden="true"></i>Mensalidades em dia. Próxima: ${escapeHtml(formatDateBR(bill.next.due))}.</p>` : ''}
+                ${paidMonths.length ? `<ul class="text-xs text-zinc-400 space-y-1 mb-3">${paidMonths.map(m => `
+                    <li class="flex items-center justify-between gap-2"><span>${escapeHtml(CheresPlans.monthLabel(m))}: paga em ${escapeHtml(formatDateBR(pays[m].paidAt))} · ${escapeHtml(CheresAttendance.METHODS[pays[m].method] || '')} · ${money(pays[m].amount)}</span>
+                    <button type="button" class="sub-unpay text-zinc-500 hover:text-red-400 underline px-2 py-1" data-month="${m}">desfazer</button></li>`).join('')}</ul>` : ''}`;
+        }
+
+        function subscriptionCardHtml(client) {
+            const pk = client.phoneKey, sb = subOf(pk), today = localToday();
+            const head = `<p id="subCardTitle" tabindex="-1" class="text-sm font-semibold text-zinc-300 mb-3 focus:outline-none"><i class="fa-solid fa-star mr-1 text-amber-400" aria-hidden="true"></i>Plano mensal</p>`;
+            const bill = sb ? CheresPlans.billing(sb, subPayments[pk], today) : null;
+            if (!sb || sb.status === 'cancelled') {
+                const options = CheresServices.active(plans);
+                const day = Math.min(28, Number(today.slice(8, 10)));
+                return `<div class="sub-card bg-zinc-900 rounded-xl p-4 lg:col-span-2">${head}
+                    ${sb ? `<p class="text-xs text-zinc-500 mb-3">Assinatura anterior (${escapeHtml(sb.planName)}) cancelada em ${escapeHtml(formatDateBR(sb.statusAt))}.${bill.late ? ' As mensalidades em atraso continuam aqui e passam para uma assinatura nova.' : ''}</p>${subPaymentsHtml(client, sb, bill)}` : ''}
+                    ${options.length ? `<form class="sub-form grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                        <div class="sm:col-span-2">
+                            <label for="subPlan" class="block text-xs text-zinc-400 mb-1">Plano</label>
+                            <select id="subPlan" required class="${fieldCls} w-full">${options.map(pl => `<option value="${escapeHtml(pl.id)}">${escapeHtml(pl.name)} — ${money(pl.price)}/mês · ${pl.uses} por mês</option>`).join('')}</select>
+                        </div>
+                        <div>
+                            <label for="subStart" class="block text-xs text-zinc-400 mb-1">Início</label>
+                            <input id="subStart" type="date" required value="${today}" class="${fieldCls} w-full">
+                        </div>
+                        <div>
+                            <label for="subDue" class="block text-xs text-zinc-400 mb-1">Vence todo dia</label>
+                            <input id="subDue" type="number" inputmode="numeric" min="1" max="28" step="1" required value="${day}" class="${fieldCls} w-full">
+                        </div>
+                        <button type="submit" class="sm:col-span-4 bg-amber-500 hover:bg-amber-600 text-black px-4 py-2.5 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-star mr-1" aria-hidden="true"></i>Assinar plano</button>
+                    </form>` : '<p class="text-xs text-zinc-500">Nenhum plano ativo. Cadastre os planos na aba Serviços.</p>'}
+                </div>`;
+            }
+            const used = CheresPlans.usedInMonth(clientRecords(pk), CheresPlans.monthOf(today), null, sb.startDate);
+            const pct = sb.uses ? Math.min(100, Math.round((used / sb.uses) * 100)) : 0;
+            return `<div class="sub-card bg-zinc-900 rounded-xl p-4 lg:col-span-2">${head}
+                <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div>
+                        <p class="font-bold text-white">${escapeHtml(sb.planName)} · ${money(sb.price)}/mês</p>
+                        <p class="text-xs text-zinc-400 mt-0.5">Desde ${escapeHtml(formatDateBR(sb.startDate))} · vence todo dia ${sb.dueDay} · ${escapeHtml(sb.services.join(', ') || 'nenhum serviço')}</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${sb.status === 'active' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-zinc-700 text-zinc-200'}">${CheresPlans.STATUS[sb.status]}${sb.status === 'paused' ? ' desde ' + escapeHtml(formatDateBR(sb.statusAt)) : ''}</span>
+                </div>
+                ${sb.status === 'active' ? `
+                <div class="flex justify-between gap-3 text-sm mb-1"><span>Cortes do plano em ${escapeHtml(CheresPlans.monthLabel(CheresPlans.monthOf(today)))}</span><span class="font-bold whitespace-nowrap shrink-0">${used} de ${sb.uses}</span></div>
+                <div class="h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-4" role="progressbar" aria-label="Cortes do plano usados no mês" aria-valuemin="0" aria-valuemax="${sb.uses}" aria-valuenow="${used}"><div class="h-full bg-emerald-500 rounded-full" style="width:${pct}%"></div></div>` : '<p class="text-xs text-zinc-400 mb-3">Pausado: os meses pausados não são cobrados.</p>'}
+                ${subPaymentsHtml(client, sb, bill)}
+                <div class="flex flex-wrap gap-2">
+                    ${sb.status === 'active'
+                        ? '<button type="button" class="sub-status text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-lg font-semibold" data-status="paused"><i class="fa-solid fa-pause mr-1" aria-hidden="true"></i>Pausar</button>'
+                        : '<button type="button" class="sub-status text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold" data-status="active"><i class="fa-solid fa-play mr-1" aria-hidden="true"></i>Retomar</button>'}
+                    <button type="button" class="sub-status text-xs bg-zinc-800 hover:bg-red-900/60 border border-zinc-700 px-3 py-2 rounded-lg font-semibold text-red-300" data-status="cancelled"><i class="fa-solid fa-xmark mr-1" aria-hidden="true"></i>Cancelar assinatura</button>
+                </div>
+            </div>`;
+        }
+
+        function bindSubscriptionCard(root, pk) {
+            const form = root.querySelector('.sub-form');
+            if (form) form.onsubmit = e => { e.preventDefault(); createSubscription(pk); };
+            root.querySelectorAll('.sub-pay').forEach(b => { b.onclick = () => openSubPayModal(pk, b.dataset.month); });
+            root.querySelectorAll('.sub-unpay').forEach(b => { b.onclick = () => removeSubPayment(pk, b.dataset.month); });
+            root.querySelectorAll('.sub-status').forEach(b => { b.onclick = () => changeSubStatus(pk, b.dataset.status); });
+        }
+
+        async function createSubscription(pk) {
+            const plan = plans.find(pl => pl.id === document.getElementById('subPlan').value);
+            const start = document.getElementById('subStart').value;
+            const due = Number(document.getElementById('subDue').value);
+            if (!plan) { alert('Escolha o plano.'); return; }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) { alert('Informe a data de início.'); return; }
+            if (!Number.isInteger(due) || due < 1 || due > 28) { alert('O vencimento deve ser um dia de 1 a 28.'); return; }
+            if (!plan.services.length) { alert(`O plano "${plan.name}" não tem serviços incluídos. Marque-os na aba Serviços antes.`); return; }
+            const client = crmAllClients.find(c => c.phoneKey === pk);
+            if (!confirm(`Assinar ${client ? client.name : formatPhone(pk)} no ${plan.name} (${money(plan.price)}/mês, vence todo dia ${due})?`)) return;
+            try {
+                const prev = subOf(pk);
+                const carry = prev ? CheresPlans.unpaidOwed(prev, subPayments[pk], localToday()) : null;
+                await db.ref(`subscriptions/${pk}`).set(CheresPlans.newSubscription(plan, start, due, new Date().toISOString(), carry));
+                showToast({ title: 'Plano assinado', body: `${plan.name} · ${money(plan.price)}/mês`, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        async function changeSubStatus(pk, status) {
+            const sb = subOf(pk);
+            if (!sb) return;
+            const text = { paused: 'Pausar a assinatura? Os meses pausados não são cobrados (o que já venceu continua em aberto).', active: 'Retomar a assinatura? A cobrança recomeça neste mês.', cancelled: `Cancelar a assinatura do ${sb.planName}? O histórico de mensalidades fica guardado.` }[status];
+            if (!confirm(text)) return;
+            try {
+                await db.ref(`subscriptions/${pk}`).update(CheresPlans.statusChange(sb, status, localToday(), subPayments[pk]));
+                showToast({ title: `Assinatura ${CheresPlans.STATUS[status].toLowerCase()}`, body: sb.planName, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        let subPayTarget = null;
+        function openSubPayModal(pk, month) {
+            const sb = subOf(pk);
+            if (!sb) return;
+            subPayTarget = { pk, month };
+            modalOpener = document.activeElement;
+            const client = crmAllClients.find(c => c.phoneKey === pk);
+            document.getElementById('spInfo').textContent = `${client ? client.name : formatPhone(pk)} · ${sb.planName} · ${CheresPlans.monthLabel(month)}`;
+            document.getElementById('spAmount').value = sb.price.toFixed(2).replace('.', ',');
+            document.getElementById('spDate').value = localToday();
+            document.querySelectorAll('input[name="spMethod"]').forEach(r => { r.checked = r.value === 'pix'; });
+            document.getElementById('subPayModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            document.querySelector('input[name="spMethod"]:checked').focus();
+        }
+
+        function closeSubPayModal() {
+            document.getElementById('subPayModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            subPayTarget = null;
+            restoreFocus();
+            if (document.activeElement === document.body) {
+                const next = document.querySelector('#crmDetail .sub-pay') || document.getElementById('subCardTitle');
+                if (next) next.focus();
+            }
+        }
+
+        async function saveSubPayment() {
+            if (!subPayTarget) return;
+            const { pk, month } = subPayTarget;
+            const amount = CheresAttendance.parseAmount(document.getElementById('spAmount').value);
+            const paidAt = document.getElementById('spDate').value;
+            const method = (document.querySelector('input[name="spMethod"]:checked') || {}).value || 'pix';
+            if (amount === null || amount > 10000) { alert('Informe o valor recebido (ex.: 110 ou 99,90).'); return; }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(paidAt)) { alert('Informe a data do pagamento.'); return; }
+            try {
+                await db.ref(`subscriptionPayments/${pk}/${month}`).set({ amount, method, paidAt, recordedAt: new Date().toISOString() });
+                closeSubPayModal();
+                showToast({ title: 'Mensalidade registrada', body: `${CheresPlans.monthLabel(month)} · ${CheresAttendance.METHODS[method]} · ${money(amount)}`, kind: 'ok' });
+            } catch (e) { failSave(e); }
+        }
+
+        async function removeSubPayment(pk, month) {
+            if (!confirm(`Desfazer o pagamento da mensalidade de ${CheresPlans.monthLabel(month)}? Ela volta a aparecer como em aberto.`)) return;
+            try { await db.ref(`subscriptionPayments/${pk}/${month}`).remove(); } catch (e) { failSave(e); }
+        }
+
+        // Painel "Mensalidades dos planos" no Financeiro: atrasadas primeiro, depois as que vencem logo.
+        function renderSubscriptionsPanel() {
+            const box = document.getElementById('subsList');
+            if (!box) return;
+            const today = localToday(), order = { late: 0, soon: 1, open: 2, paid: 3 };
+            const rows = Object.keys(subscriptions).map(pk => ({ pk, sb: subOf(pk) }))
+                .filter(x => x.sb)
+                .map(x => {
+                    const bill = CheresPlans.billing(x.sb, subPayments[x.pk], today);
+                    const item = bill.open || (x.sb.status === 'active' ? bill.months[bill.months.length - 1] || bill.next : null);
+                    const client = crmAllClients.find(c => c.phoneKey === x.pk);
+                    return { ...x, bill, item, name: client ? client.name : formatPhone(x.pk) };
+                })
+                .filter(x => x.item)
+                .sort((a, b) => order[a.item.state] - order[b.item.state] || a.item.due.localeCompare(b.item.due) || a.name.localeCompare(b.name, 'pt-BR'));
+            const sum = CheresPlans.summary(subscriptions);
+            const late = rows.filter(r => r.bill.late).length;
+            document.getElementById('subsSummary').textContent = sum.count
+                ? `${sum.count} assinante${sum.count === 1 ? '' : 's'} · ${money(sum.monthly)}/mês${late ? ` · ${late} com atraso` : ''}`
+                : '';
+            box.innerHTML = rows.length ? rows.map(r => `
+                <div class="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-xl px-3 py-2">
+                    <button type="button" class="text-left mr-auto min-w-0 hover:underline" onclick="switchDashboardTab('crm'); showCRMDetail('${r.pk}')">
+                        <span class="block font-semibold text-white truncate">${escapeHtml(r.name)}</span>
+                        <span class="block text-xs text-zinc-400">${escapeHtml(r.sb.planName)}${r.sb.status !== 'active' ? ` (${CheresPlans.STATUS[r.sb.status].toLowerCase()})` : ''} · ${money(r.sb.price)} · ${escapeHtml(CheresPlans.monthLabel(r.item.month))}, vence ${escapeHtml(formatDateBR(r.item.due).slice(0, 5))}${r.bill.late > 1 ? ` · ${r.bill.late} meses em atraso` : ''}</span>
+                    </button>
+                    ${subStateChip(r.item.state)}
+                    ${r.item.state !== 'paid' ? `
+                        <a href="${escapeHtml(waLink(r.pk, CheresPlans.chargeMessage(r.name, r.sb, r.item)))}" target="_blank" rel="noopener" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg font-semibold"><i class="fa-brands fa-whatsapp mr-1"></i>Cobrar</a>
+                        <button type="button" onclick="openSubPayModal('${r.pk}', '${r.item.month}')" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold">Marcar como paga</button>` : ''}
+                </div>`).join('') : '<p class="text-sm text-zinc-500">Nenhum assinante ativo. Para assinar um cliente, abra a ficha dele no CRM.</p>';
+        }
+
         // Linha extra no cartão da tela Hoje: anotação do cliente, brinde disponível, aniversário no dia.
         function cardExtrasHtml(pk, date) {
             if (!pk) return '';
             const note = clientNotes[pk] || {};
             const client = crmAllClients.find(c => c.phoneKey === pk);
             const parts = [];
+            const sb = subOf(pk);
+            if (sb && sb.status === 'active') {
+                const used = CheresPlans.usedInMonth(clientRecords(pk), CheresPlans.monthOf(date || localToday()), null, sb.startDate);
+                parts.push(`<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-400/15 text-emerald-300 mt-1 mr-1"><i class="fa-solid fa-star mr-1" aria-hidden="true"></i>${escapeHtml(sb.planName)} · ${used} de ${sb.uses} usados</span>`);
+            }
             if (client && loyaltyFor(client).available) parts.push('<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 mt-1 mr-1"><i class="fa-solid fa-gift mr-1"></i>Brinde disponível</span>');
             if (note.birthday && date && date.slice(5) === note.birthday) parts.push('<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-pink-900/50 text-pink-300 mt-1 mr-1"><i class="fa-solid fa-cake-candles mr-1"></i>Aniversário hoje</span>');
             if (note.notes) parts.push(`<p class="text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1 mt-1.5"><i class="fa-solid fa-note-sticky mr-1"></i>${escapeHtml(note.notes)}</p>`);

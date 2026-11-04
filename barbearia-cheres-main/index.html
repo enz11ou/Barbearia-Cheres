@@ -14,6 +14,7 @@
     <script src="schedule.js"></script>
     <script src="attendance.js"></script>
     <script src="services.js"></script>
+    <script src="plans.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
@@ -363,6 +364,20 @@
                 </div>
             </div>
 
+            <div id="profPlan" class="hidden bg-zinc-950 border border-emerald-600/40 rounded-3xl p-5 sm:p-6 shadow-2xl mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h3 class="font-bold text-emerald-400"><i class="fa-solid fa-star mr-2" aria-hidden="true"></i><span id="profPlanName">Meu plano</span></h3>
+                    <span id="profPlanStatus" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                </div>
+                <div id="profPlanUse">
+                    <div class="flex justify-between text-sm mb-2"><span id="profPlanMonth" class="text-zinc-300"></span><span id="profPlanCount" class="font-semibold text-zinc-200"></span></div>
+                    <div id="profPlanBar" class="h-3 bg-zinc-800 rounded-full overflow-hidden" role="progressbar" aria-label="Cortes do plano usados no mês" aria-valuemin="0">
+                        <div id="profPlanFill" class="h-full bg-emerald-500 rounded-full transition-all" style="width:0"></div>
+                    </div>
+                </div>
+                <p id="profPlanText" class="text-sm text-zinc-400 mt-3"></p>
+            </div>
+
             <div id="profLoyalty" class="bg-zinc-950 border border-amber-600/30 rounded-3xl p-5 sm:p-6 shadow-2xl mb-6">
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <h3 class="font-bold text-amber-500"><i class="fa-solid fa-gift mr-2"></i>Fidelidade Cheres</h3>
@@ -456,6 +471,7 @@
         const loyaltySettingsRef = db.ref('settings/loyalty');
         let loyaltyCfg = null;        // settings/loyalty (null = 7 cortes, desde 03/11/2026)
         let myRedeemedCount = 0;      // brindes de fidelidade já usados pelo cliente logado
+        let mySub = null, mySubPays = {};   // assinatura do plano e mensalidades do cliente logado (só leitura)
         const myWaitlist = {};        // data -> true/false (se o cliente está na lista de espera do dia)
 
         // ============ DATA STRUCTURES ============
@@ -877,6 +893,7 @@
             myHistory = [];
             myCancelled = [];
             myRedeemedCount = 0;
+            mySub = null; mySubPays = {};
             Object.keys(myWaitlist).forEach(k => delete myWaitlist[k]);
             subscribedKey = key;
             if (!key) return;
@@ -899,6 +916,46 @@
             const loyaltyCb = snap => { myRedeemedCount = snap.numChildren(); renderProfile(); };
             loyaltyQ.on('value', loyaltyCb, () => {});
             clientSubs.push({ q: loyaltyQ, cb: loyaltyCb });
+            [[`subscriptions/${key}`, snap => { mySub = CheresPlans.normalizeSubscription(snap.val()); }],
+             [`subscriptionPayments/${key}`, snap => { mySubPays = snap.val() || {}; }]].forEach(([path, assign]) => {
+                const q = db.ref(path);
+                const cb = snap => { assign(snap); renderProfile(); };
+                q.on('value', cb, () => {});
+                clientSubs.push({ q, cb });
+            });
+        }
+
+        // "Meu plano" na Minha Conta: cortes usados no mês e situação da mensalidade (o cliente só lê).
+        function renderMyPlan() {
+            const box = document.getElementById('profPlan');
+            const sb = mySub;
+            box.classList.toggle('hidden', !sb || sb.status === 'cancelled');
+            if (!sb || sb.status === 'cancelled') return;
+            const $ = id => document.getElementById(id);
+            const today = localISODate(), month = CheresPlans.monthOf(today);
+            const active = sb.status === 'active';
+            $('profPlanName').textContent = sb.planName;
+            $('profPlanStatus').textContent = active ? 'Ativo' : 'Pausado';
+            $('profPlanStatus').className = `text-xs font-semibold px-2.5 py-1 rounded-full ${active ? 'bg-emerald-900/60 text-emerald-300' : 'bg-zinc-700 text-zinc-200'}`;
+            $('profPlanUse').classList.toggle('hidden', !active);
+            if (!active) {
+                const owed = CheresPlans.billing(sb, mySubPays, today).late;
+                $('profPlanText').textContent = 'Seu plano está pausado. Fale com o André para retomar.' + (owed ? ` Há ${owed === 1 ? '1 mensalidade' : owed + ' mensalidades'} em aberto.` : '');
+                return;
+            }
+            const used = CheresPlans.usedInMonth([...myAppointments, ...myHistory], month, null, sb.startDate);
+            const left = Math.max(0, sb.uses - used);
+            $('profPlanMonth').textContent = `Cortes do plano em ${CheresPlans.monthLabel(month)}`;
+            $('profPlanCount').textContent = `${used} de ${sb.uses}`;
+            $('profPlanFill').style.width = `${Math.min(100, Math.round((used / sb.uses) * 100))}%`;
+            $('profPlanBar').setAttribute('aria-valuemax', String(sb.uses));
+            $('profPlanBar').setAttribute('aria-valuenow', String(used));
+            const bill = CheresPlans.billing(sb, mySubPays, today);
+            const due = d => d.split('-').reverse().slice(0, 2).join('/');
+            const billText = !bill.open ? `Mensalidade em dia. Próximo vencimento: ${due(bill.next.due)}.`
+                : bill.open.state === 'late' ? `A mensalidade de ${CheresPlans.monthLabel(bill.open.month)} venceu em ${due(bill.open.due)}. Fale com o André para acertar.`
+                : `Próxima mensalidade: ${formatMoney(sb.price)}, vence em ${due(bill.open.due)}.`;
+            $('profPlanText').textContent = `${left ? `Ainda ${left === 1 ? 'resta 1 corte' : `restam ${left} cortes`} este mês` : 'Você já usou todos os cortes do plano este mês'} (${sb.services.join(', ')}). Os cortes não acumulam para o mês seguinte. ${billText}`;
         }
 
         function updateAccountUI() {
@@ -1203,9 +1260,12 @@
             $('profLoyaltyFill').style.width = `${Math.round((loyal.progress / loyal.every) * 100)}%`;
             $('profLoyaltyBar').setAttribute('aria-valuemax', String(loyal.every));
             $('profLoyaltyBar').setAttribute('aria-valuenow', String(loyal.progress));
-            $('profLoyaltyText').textContent = loyal.available
+            $('profLoyaltyText').textContent = (loyal.available
                 ? `Você tem ${loyal.available} corte${loyal.available === 1 ? '' : 's'} grátis! É só avisar o André no próximo atendimento.`
-                : `Faltam ${loyal.remaining} corte${loyal.remaining === 1 ? '' : 's'} para o seu corte grátis. A cada ${loyal.every} cortes, 1 é por nossa conta.`;
+                : `Faltam ${loyal.remaining} corte${loyal.remaining === 1 ? '' : 's'} para o seu corte grátis. A cada ${loyal.every} cortes, 1 é por nossa conta.`)
+                + (mySub && mySub.status === 'active' ? ' Os cortes feitos pelo plano não entram na contagem.' : '');
+
+            renderMyPlan();
 
             $('profUpcoming').innerHTML = upcoming.length ? upcoming.map(a => `
                 <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 flex flex-col gap-3">

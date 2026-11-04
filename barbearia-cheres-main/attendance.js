@@ -3,13 +3,13 @@
 //
 // Campos gravados pelo barbeiro no próprio agendamento (e levados junto para o histórico):
 //   attendance: 'attended' | 'noshow'
-//   payment: { method: 'pix' | 'cash' | 'card', amount: 30 }
+//   payment: { method: 'pix' | 'cash' | 'card' | 'plan', amount: 30 }   ('plan' = coberto pela assinatura, valor 0)
 //   price: preço do serviço na época
 // Registros antigos do histórico com status 'completed' (antes da Fase 2) contam como atendidos.
 (function (root) {
     'use strict';
 
-    var METHODS = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão' };
+    var METHODS = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão', plan: 'Plano' };
 
     // isPast(date, time) é passado por cada página (usa a hora local do aparelho).
     // inHistory = o registro está em appointmentHistory (dia já encerrado).
@@ -61,11 +61,13 @@
         return { every: every >= 1 && every <= 50 ? Math.floor(every) : LOYALTY_DEFAULT.every, since: since };
     }
 
-    // records: lista de { date, service, outcome }; redeemedCount: brindes já usados.
+    // records: lista de { date, service, outcome, payment? | viaPlan? }; redeemedCount: brindes já usados.
+    // Corte pago pelo plano (payment.method 'plan') não conta: a fidelidade é para quem paga avulso.
     function loyaltyStatus(records, redeemedCount, settings) {
         var cfg = loyaltySettings(settings);
         var cuts = (records || []).filter(function (r) {
-            return r.outcome === 'attended' && isCut(r.service) && String(r.date || '') >= cfg.since;
+            var plan = r.viaPlan === true || !!(r.payment && r.payment.method === 'plan');
+            return r.outcome === 'attended' && !plan && isCut(r.service) && String(r.date || '') >= cfg.since;
         }).length;
         var earned = Math.floor(cuts / cfg.every);
         var used = Math.max(0, Number(redeemedCount) || 0);

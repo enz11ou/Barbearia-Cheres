@@ -69,7 +69,18 @@ describe('financeiro', () => {
         assert.equal(from, '2026-11-01'); assert.equal(to, '2026-11-30');
         const s = R.summarize(entries, from, to);
         assert.equal(s.count, 2); assert.equal(s.total, 50); assert.equal(s.average, 25);
-        assert.deepEqual(plain(s.byMethod), { pix: 30, cash: 20, card: 0, unknown: 0 });
+        assert.deepEqual(plain(s.byMethod), { pix: 30, cash: 20, card: 0, plan: 0, unknown: 0 });
+    });
+    test('mensalidades entram no total, mas não no ticket médio nem no serviço mais vendido', () => {
+        const subs = R.subscriptionEntries([{ phoneKey: '21911111111', month: '2026-11', amount: 110, method: 'pix', paidAt: '2026-11-10' }], () => 'Alice');
+        const planCut = { date: '2026-11-12', service: 'Corte', phone: '21911111111', amount: 0, method: 'plan' };
+        const all = [...entries, ...subs, planCut];
+        const s = R.summarize(all, '2026-11-01', '2026-11-30');
+        assert.equal(s.total, 160); assert.equal(s.subscriptions, 110); assert.equal(s.subscriptionCount, 1);
+        assert.equal(s.count, 3); assert.equal(s.planUses, 1); assert.equal(s.average, 25);
+        assert.equal(s.byMethod.pix, 140); assert.equal(s.byService[R.SUBSCRIPTION_LABEL], 110);
+        const hl = R.periodHighlights(all, '2026-11-01', '2026-11-30');
+        assert.notEqual(hl.topService, R.SUBSCRIPTION_LABEL);
     });
     test('histórico antigo aparece como "não informado"', () => {
         const s = R.summarize(entries, '2026-10-01', '2026-10-31');
